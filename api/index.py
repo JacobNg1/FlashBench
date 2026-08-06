@@ -6,6 +6,24 @@ from fastapi.responses import JSONResponse
 
 _startup_error = None
 
+
+def _build_error_response(e: Exception, env_check: dict = None):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "后端处理失败",
+            "detail": str(e),
+            "traceback": traceback.format_exc(),
+            "env_check": env_check
+            or {
+                "TURSO_DATABASE_URL_set": bool(os.getenv("TURSO_DATABASE_URL")),
+                "TURSO_AUTH_TOKEN_set": bool(os.getenv("TURSO_AUTH_TOKEN")),
+                "JWT_SECRET_KEY_set": bool(os.getenv("JWT_SECRET_KEY")),
+            },
+        },
+    )
+
+
 try:
     from .db import init_schema
     from .auth import router as auth_router
@@ -23,6 +41,10 @@ try:
         version="2.0.0",
         lifespan=lifespan,
     )
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        return _build_error_response(exc)
 
     app.include_router(auth_router)
     app.include_router(data_router)
@@ -44,19 +66,6 @@ except Exception as e:
 
     app = FastAPI()
 
-    @app.get("/{path:path}")
+    @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
     async def startup_error_handler(request: Request, path: str):
-        env_check = {
-            "TURSO_DATABASE_URL_set": bool(os.getenv("TURSO_DATABASE_URL")),
-            "TURSO_AUTH_TOKEN_set": bool(os.getenv("TURSO_AUTH_TOKEN")),
-            "JWT_SECRET_KEY_set": bool(os.getenv("JWT_SECRET_KEY")),
-        }
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": "后端启动失败",
-                "detail": str(e),
-                "traceback": _startup_error,
-                "env_check": env_check,
-            },
-        )
+        return _build_error_response(e)
