@@ -24,3 +24,10 @@ Thumbs.db
 
 # Vercel
 .vercel/
+
+# Local SQLite databases
+local.db
+*.db
+
+# Test scripts
+test_api.py

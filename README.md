@@ -7,7 +7,7 @@
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel&logoColor=white)](https://vercel.com/new)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-f59e0b)](LICENSE)
+[![Turso](https://img.shields.io/badge/DB-Turso-4FF8B3?logo=turso&logoColor=white)](https://turso.tech/)
 
 <p align="center">
   <img src="https://img.shields.io/badge/📅-课程表-10b981" />
@@ -52,7 +52,8 @@
 - **前端**：原生 HTML / CSS / JavaScript + Chart.js
 - **后端**：FastAPI（Python）
 - **部署**：Vercel
-- **数据库**：Supabase PostgreSQL（可选，用于云端持久化）
+- **数据库**：Turso（libSQL / SQLite 云端版）
+- **认证**：JWT + bcrypt
 
 ---
 
@@ -73,25 +74,33 @@ cd FlashBench
 2. 点击 **Add New Project**
 3. 选择你的 `FlashBench` GitHub 仓库
 4. Framework Preset 选择 **Other**
-5. 点击 **Deploy** 🎉
+5. 在 **Environment Variables** 里添加下面三个变量（见下一节）
+6. 点击 **Deploy** 🎉
 
 > Vercel 会自动识别 `api/index.py` 作为后端函数，`public/` 目录作为静态前端。
 
-### 3. 绑定自定义域名（可选）
-
-部署完成后，在 Vercel 项目的 **Domains** 里添加你自己的域名，比如 `chloe.jacobng.ccwu.cc`。
-
 ---
 
-## 🐘 连接数据库（Supabase）
+## 🗄 连接数据库（Turso）
 
-项目默认使用浏览器 `localStorage` 存储数据。如果想跨设备同步、防止数据丢失，可以接入 **Supabase** 免费 PostgreSQL。
+项目使用 **Turso** 作为云端数据库，每位用户的数据独立存储，支持跨设备同步。
 
-### 1. 创建 Supabase 项目
+### 1. 创建 Turso 数据库
 
-1. 访问 [Supabase](https://supabase.com/) 注册/登录
-2. 新建一个 Project
-3. 进入 **Project Settings → Database**，复制 **Connection string**
+1. 访问 [Turso](https://turso.tech/) 注册/登录
+2. 安装 Turso CLI 并登录：
+
+```bash
+turso auth login
+turso db create flashbench
+turso db tokens create flashbench -a all
+```
+
+3. 获取数据库连接地址：
+
+```bash
+turso db show flashbench
+```
 
 ### 2. 在 Vercel 设置环境变量
 
@@ -99,32 +108,22 @@ cd FlashBench
 
 | 变量名 | 说明 |
 |--------|------|
-| `DATABASE_URL` | Supabase 的 PostgreSQL 连接字符串 |
+| `TURSO_DATABASE_URL` | Turso 数据库地址，格式 `libsql://xxxx.turso.io` |
+| `TURSO_AUTH_TOKEN` | Turso 数据库 Token |
+| `JWT_SECRET_KEY` | 用于签发登录 Token 的密钥，建议随机生成一串长字符串 |
 
-连接字符串格式类似：
+### 3. 后端自动建表
 
-```
-postgresql://postgres:[密码]@db.[项目ID].supabase.co:5432/postgres
-```
+部署完成后，FastAPI 启动时会自动执行 `CREATE TABLE IF NOT EXISTS`，无需手动建表。
 
-### 3. 建表
+---
 
-在 Supabase 的 **SQL Editor** 里执行：
+## 🔐 注册与登录
 
-```sql
-CREATE TABLE workbench_data (
-    id SERIAL PRIMARY KEY,
-    user_id TEXT NOT NULL DEFAULT 'default',
-    data JSONB NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE UNIQUE INDEX idx_workbench_data_user ON workbench_data(user_id);
-```
-
-### 4. 完成 ✅
-
-后端会通过 `DATABASE_URL` 自动连接数据库，前端保存数据时就会同步到 Supabase 云端。
+- 首次打开页面时，会弹出登录/注册窗口
+- 用户名 2-32 位，密码至少 6 位
+- 登录成功后，Token 保存在浏览器 `localStorage`，30 天内自动登录
+- 每个账号的数据在 Turso 中独立保存
 
 ---
 
@@ -134,10 +133,15 @@ CREATE UNIQUE INDEX idx_workbench_data_user ON workbench_data(user_id);
 # 1. 安装依赖
 pip install -r requirements.txt
 
-# 2. 启动本地服务
+# 2. 设置环境变量（Windows PowerShell）
+$env:TURSO_DATABASE_URL="libsql://xxxx.turso.io"
+$env:TURSO_AUTH_TOKEN="your-turso-token"
+$env:JWT_SECRET_KEY="your-random-secret"
+
+# 3. 启动本地服务
 python main.py
 
-# 3. 浏览器打开
+# 4. 浏览器打开
 open http://localhost:8000
 ```
 
@@ -147,18 +151,22 @@ open http://localhost:8000
 
 ```
 FlashBench/
-├── api/
-│   └── index.py          # FastAPI 后端入口
-├── public/               # 前端静态资源（Vercel 自动托管）
+├── api/                    # FastAPI 后端
+│   ├── index.py            # 应用入口与生命周期
+│   ├── db.py               # Turso 数据库操作
+│   ├── auth.py             # 注册 / 登录 / JWT
+│   └── data.py             # 工作台数据读写接口
+├── public/                 # 前端静态资源（Vercel 自动托管）
 │   ├── index.html
-│   ├── app.js
-│   ├── modules.js
-│   ├── style.css
+│   ├── auth.js             # 前端认证逻辑
+│   ├── app.js              # 核心引擎
+│   ├── modules.js          # 各功能模块
+│   ├── style.css           # 样式
 │   └── ...
-├── main.py               # 本地开发启动入口
-├── requirements.txt      # Python 依赖
-├── vercel.json           # Vercel 路由配置
-└── README.md             # 本文件
+├── main.py                 # 本地开发启动入口
+├── requirements.txt        # Python 依赖
+├── vercel.json             # Vercel 路由配置
+└── README.md               # 本文件
 ```
 
 ---
