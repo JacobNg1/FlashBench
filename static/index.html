@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#064e3b">
+  <meta name="apple-mobile-web-app-title" content="Chloe的工作台">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <title>Chloe的工作台</title>
+  <script>
+    // 版本检测：自动清理旧缓存
+    (function() {
+      var ver = 'v10';
+      if (localStorage.getItem('app_version') !== ver) {
+        localStorage.setItem('app_version', ver);
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+          });
+        }
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            Promise.all(regs.map(function(r) { return r.unregister(); })).then(function() {
+              if (window.location.reload) location.reload();
+            });
+          });
+        }
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="style.css?v=10">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar"></aside>
+    <div id="sidebar-overlay"></div>
+    <div id="main-wrapper">
+      <header id="topbar"></header>
+      <main id="content"></main>
+    </div>
+    <div id="modal-overlay"></div>
+    <div id="toast-container"></div>
+  </div>
+  <script src="app.js?v=10"></script>
+  <script src="master_schedule_data.js?v=10"></script>
+  <script src="modules.js?v=10"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
