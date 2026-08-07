@@ -237,6 +237,11 @@ html, body {
 .topbar-date { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .topbar-time { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 
+.topbar-user-wrap {
+  position: relative;
+  cursor: pointer;
+}
+
 .topbar-user {
   width: 36px; height: 36px;
   border-radius: 50%;

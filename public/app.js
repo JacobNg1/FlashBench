@@ -353,7 +353,14 @@ function renderTopbar() {
       <div class="topbar-time" id="topbar-time">${now.toTimeString().slice(0,8)}</div>
     </div>
     <button class="topbar-settings-btn" onclick="showSettings()" title="数据管理">${ICON.grid}</button>
-    <div class="topbar-user" title="${user ? user.username : '教师'}">${user ? user.username.slice(0,1) : '师'}</div>
+    <div class="topbar-user-wrap" onclick="showUserDropdown(event)">
+      <div class="topbar-user" title="${user ? user.username : '教师'}">${user ? user.username.slice(0,1) : '师'}</div>
+      <div class="dropdown-menu" id="user-dropdown" style="right:0;left:auto;top:44px;">
+        <div class="dropdown-item" onclick="showProfile()">${ICON.user}<span>个人中心</span></div>
+        <div style="border-top:1px solid var(--border-light);margin:4px 0"></div>
+        <div class="dropdown-item" onclick="Auth.logout()">${ICON.logout}<span>退出登录</span></div>
+      </div>
+    </div>
   `;
 }
 
@@ -374,6 +381,26 @@ function showClassDropdown(e) {
     document.getElementById('class-dropdown').classList.remove('show');
     document.removeEventListener('click', handler);
   });
+}
+
+function showUserDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('user-dropdown').classList.toggle('show');
+  document.addEventListener('click', function handler() {
+    const dd = document.getElementById('user-dropdown');
+    if (dd) dd.classList.remove('show');
+    document.removeEventListener('click', handler);
+  });
+}
+
+function showProfile() {
+  const user = Auth.getUser();
+  UI.modal('个人中心', `
+    <div class="form-group"><label class="form-label">用户名</label>
+    <input class="form-input" value="${esc(user ? user.username : '')}" disabled></div>
+    <div class="form-group"><label class="form-label">用户 ID</label>
+    <input class="form-input" value="${esc(user ? user.id : '')}" disabled></div>
+  `, `<button class="btn btn-primary" onclick="UI.closeModal()">知道了</button>`);
 }
 
 function switchClass(id) {
