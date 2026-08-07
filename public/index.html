@@ -33,6 +33,26 @@
   </script>
   <link rel="stylesheet" href="style.css?v=16">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    // Chart.js 加载失败时尝试备用 CDN
+    (function() {
+      if (typeof Chart !== 'undefined') return;
+      var scripts = [
+        'https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js'
+      ];
+      var i = 0;
+      function loadNext() {
+        if (i >= scripts.length) return;
+        var s = document.createElement('script');
+        s.src = scripts[i++];
+        s.onload = function() { if (typeof Chart === 'undefined') loadNext(); };
+        s.onerror = loadNext;
+        document.head.appendChild(s);
+      }
+      loadNext();
+    })();
+  </script>
 </head>
 <body>
   <div id="app">

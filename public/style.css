@@ -51,6 +51,14 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* 行内 SVG 图标默认尺寸，防止无显式宽高时被浏览器无限放大 */
+svg {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 #app { display: flex; height: 100%; overflow: hidden; }
 
 /* ===== Sidebar ===== */
@@ -882,9 +890,15 @@ table.data-table {
 .chart-container {
   position: relative;
   width: 100%;
+  min-height: 120px;
 }
 
-.chart-container canvas { max-width: 100%; }
+.chart-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+}
 
 /* ===== Dropdown Menu ===== */
 .dropdown {

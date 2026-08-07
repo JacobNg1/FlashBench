@@ -1667,10 +1667,12 @@ M.records = function() {
     </div>
     <div class="grid grid-2 mb-4">
       <div class="card"><div class="card-title">${ICON.records} 类型统计</div>
-        <div class="chart-container" style="height:240px"><canvas id="chart-rec-type"></canvas></div></div>
+        <div class="chart-container" style="height:240px">
+          ${records.length ? '<canvas id="chart-rec-type"></canvas>' : UI.empty(ICON.records, '暂无工作记录，饼图将在添加记录后显示')}
+        </div></div>
       <div class="card"><div class="card-title">${ICON.list} 统计概览</div>
         <div class="grid grid-2">
-          ${typeCounts.map(t => `<div class="stat-card green"><div class="stat-icon green">${ICON[t.type==='备课'?'lesson':t.type==='教研'?'communication':t.type==='听课'?'dashboard':t.type==='批改'?'homework':'clock']}</div><div><div class="stat-value">${t.count}</div><div class="stat-label">${t.type}</div></div></div>`).join('')}
+          ${typeCounts.length ? typeCounts.map(t => `<div class="stat-card green"><div class="stat-icon green">${ICON[t.type==='备课'?'lesson':t.type==='教研'?'communication':t.type==='听课'?'dashboard':t.type==='批改'?'homework':'clock']}</div><div><div class="stat-value">${t.count}</div><div class="stat-label">${t.type}</div></div></div>`).join('') : `<div class="stat-card gray"><div class="stat-icon gray">${ICON.clock}</div><div><div class="stat-value">0</div><div class="stat-label">暂无记录</div></div></div>`}
         </div>
       </div>
     </div>
@@ -1687,12 +1689,45 @@ M.records = function() {
     </div>
   `;
 
-  if (records.length) {
-    App.regChart(new Chart(document.getElementById('chart-rec-type'), {
-      type: 'doughnut',
-      data: { labels: typeCounts.map(t => t.type), datasets: [{ data: typeCounts.map(t => t.count), backgroundColor: PALETTE.slice(0, typeCounts.length) }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-    }));
+  if (records.length && typeof Chart !== 'undefined') {
+    try {
+      const canvas = document.getElementById('chart-rec-type');
+      if (!canvas) return;
+      App.regChart(new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: typeCounts.map(t => t.type),
+          datasets: [{
+            data: typeCounts.map(t => t.count),
+            backgroundColor: PALETTE.slice(0, typeCounts.length),
+            borderColor: '#ffffff',
+            borderWidth: 2,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '55%',
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total ? Math.round(ctx.raw / total * 100) : 0;
+                  return `${ctx.label}: ${ctx.raw} (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      }));
+    } catch (e) {
+      console.error('工作留痕饼图渲染失败:', e);
+      const container = document.querySelector('.chart-container');
+      if (container) container.innerHTML = UI.empty(ICON.alert, '图表加载失败，请刷新页面重试');
+    }
   }
 };
 
