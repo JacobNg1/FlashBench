@@ -93,6 +93,7 @@ function createEmptyData() {
     students: {},
     schedule: {},
     recitation: {},
+    dictation: {},
     exams: {},
     grades: {},
     homework: {},
@@ -260,6 +261,7 @@ const NAV = [
   { section: '日常教学', items: [
     { id: 'homework', label: '作业管理', icon: 'homework' },
     { id: 'recitation', label: '背书统计', icon: 'recitation' },
+    { id: 'dictation', label: '默写登记', icon: 'book' },
     { id: 'lesson', label: '教师备课', icon: 'lesson' },
     { id: 'teacherKit', label: '教师锦囊', icon: 'teacherKit' },
   ]},

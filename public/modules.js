@@ -40,6 +40,68 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
+    if (inQuotes) {
+      if (c === '"' && next === '"') { cell += '"'; i++; }
+      else if (c === '"') { inQuotes = false; }
+      else { cell += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (cell !== '' || row.length) { row.push(cell); rows.push(row); row = []; cell = ''; }
+      }
+      else { cell += c; }
+    }
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  const headers = rows.shift() || [];
+  return rows.map(r => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h.trim()] = (r[i] || '').trim(); });
+    return obj;
+  });
+}
+
+function importFromFile(moduleName, processor, options = {}) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,.csv,application/json,text/csv';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        let data;
+        if (file.name.endsWith('.json')) {
+          data = JSON.parse(ev.target.result);
+          if (!Array.isArray(data) && data.data) data = data.data;
+        } else {
+          data = parseCSV(ev.target.result);
+        }
+        if (!Array.isArray(data)) { UI.toast('文件格式错误：需要对象数组'); return; }
+        const count = processor(data, options);
+        Store.save();
+        if (moduleName && typeof M[moduleName] === 'function') M[moduleName]();
+        UI.toast(`成功导入 ${count || data.length} 条记录`);
+      } catch (err) {
+        UI.toast('导入失败：' + err.message, 'error');
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
 function tabBar(tabs, current) {
   return `<div class="tabs">${tabs.map(t => `<div class="tab ${t.id===current?'active':''}" onclick="M._tabs['${t.group}']='${t.id}';M.${t.group}()">${t.label}</div>`).join('')}</div>`;
 }
@@ -505,6 +567,7 @@ M.schedule = function() {
       <div><div class="module-title">${ICON.schedule} 我的课表</div>
       <div class="module-subtitle">唐楚儿 · ${cls.name}</div></div>
       <div class="flex gap-2">
+        <button class="btn btn-outline" onclick="importSchedule()">${ICON.upload} 导入</button>
         <button class="btn btn-primary" onclick="addScheduleLesson()">${ICON.plus} 添加课程</button>
       </div>
     </div>
@@ -613,6 +676,28 @@ function delScheduleLesson(id) {
   }
 }
 
+function importSchedule() {
+  importFromFile('schedule', rows => {
+    const schedule = getSchedule();
+    const validTypes = ['lesson', 'duty', 'meal', 'rest', 'evening'];
+    let count = 0;
+    rows.forEach(r => {
+      const day = r.day || r.星期 || r.日期;
+      const time = r.time || r.时间 || r.时间段;
+      if (!day || !time) return;
+      const subject = r.subject || r.科目 || '';
+      const cls = r.class || r.班级 || r['班级/地点'] || '';
+      const type = (r.type || r.类型 || 'lesson').toLowerCase();
+      const period = r.period || r.节次 || '';
+      const note = r.note || r.备注 || '';
+      const id = r.id || Store.uid();
+      schedule.push({ id, day, time, period, subject, class: cls, type: validTypes.includes(type) ? type : 'lesson', note });
+      count++;
+    });
+    return count;
+  });
+}
+
 function addClassSwap() {
   const now = new Date();
   const today = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
@@ -673,7 +758,7 @@ function delClassSwap(id) {
  * 2.5. 课程总表（全校）
  * ============================================================ */
 M.masterSchedule = function() {
-  const ms = window.MASTER_SCHEDULE;
+  const ms = (Store.data.masterSchedule && Object.keys(Store.data.masterSchedule).length ? Store.data.masterSchedule : null) || window.MASTER_SCHEDULE;
   if (!ms) return;
   const days = ['周一','周二','周三','周四','周五'];
   const periods = ms.periods;
@@ -755,6 +840,9 @@ M.masterSchedule = function() {
     <div class="module-header">
       <div><div class="module-title">${ICON.grid} 课程总表</div>
       <div class="module-subtitle">宝月小学 · 全校12班</div></div>
+      <div class="flex gap-2">
+        <button class="btn btn-outline" onclick="importMasterSchedule()">${ICON.upload} 导入总表</button>
+      </div>
     </div>
     ${tabBar(gradeKeys.map(g => ({group:'masterSchedule',id:g,label:g=== '全校'?'全校总表':g+'年级'})), viewGrade)}
     <div class="mt-3">
@@ -763,6 +851,34 @@ M.masterSchedule = function() {
     </div>
   `;
 };
+
+function importMasterSchedule() {
+  importFromFile('masterSchedule', data => {
+    let ms;
+    if (Array.isArray(data)) {
+      // CSV mode: expect columns grade, class, day, period, subject
+      ms = {
+        periods: window.MASTER_SCHEDULE ? window.MASTER_SCHEDULE.periods : [],
+        schedule: {},
+        teacher_tang: window.MASTER_SCHEDULE ? window.MASTER_SCHEDULE.teacher_tang : {}
+      };
+      data.forEach(r => {
+        const cls = r.class || r.班级 || r['班级'];
+        const day = r.day || r.星期 || r.天;
+        const period = r.period || r.节次 || r.节;
+        const subject = r.subject || r.科目 || r.课程;
+        if (!cls || !day || !period) return;
+        if (!ms.schedule[cls]) ms.schedule[cls] = {};
+        if (!ms.schedule[cls][day]) ms.schedule[cls][day] = {};
+        ms.schedule[cls][day][period] = subject;
+      });
+    } else {
+      ms = data;
+    }
+    Store.data.masterSchedule = ms;
+    return Array.isArray(data) ? data.length : 'JSON';
+  });
+}
 
 /* ============================================================
  * 3. 背书统计（按书本页数）
@@ -977,6 +1093,9 @@ M.recitation = function() {
     <div class="module-header">
       <div><div class="module-title">${ICON.recitation} 背书统计</div>
       <div class="module-subtitle">${cls.name} · 按书本页数登记</div></div>
+      <div class="flex gap-2">
+        <button class="btn btn-outline" onclick="importRecitation()">${ICON.download} 导入</button>
+      </div>
     </div>
     ${tabBar([
       {group:'recitation',id:'dashboard',label:'数据看板'},
@@ -1037,6 +1156,241 @@ function exportRecitationWord() {
   UI.exportWord(cls.name + '背书统计', html);
 }
 
+function importRecitation() {
+  importFromFile('recitation', rows => {
+    const records = Store.cd('recitation');
+    const validStatuses = RECITATION_STATUS.map(s => s.id);
+    let count = 0;
+    rows.forEach(r => {
+      const unit = r.unit || r.单元;
+      const page = r.page || r.页码;
+      const studentName = r.studentName || r.student || r.学生姓名 || r.姓名;
+      const status = r.status || r.状态 || 'none';
+      const date = r.date || r.日期 || todayStr();
+      const score = parseInt(r.score || r.评分 || '0', 10) || 0;
+      const remark = r.remark || r.评语 || r.备注 || '';
+      if (!unit || !page || !studentName) return;
+      const student = getStudents().find(s => s.name === studentName);
+      const finalStatus = validStatuses.includes(status) ? status : 'none';
+      records.push({
+        id: Store.uid(),
+        unit, page,
+        studentId: student ? student.id : ('unknown_' + Store.uid()),
+        studentName,
+        status: finalStatus,
+        date,
+        score,
+        remark
+      });
+      count++;
+    });
+    return count;
+  });
+}
+
+/* ============================================================
+ * 3.5 默写登记
+ * ============================================================ */
+const DICTATION_GRADES = [
+  { id: 'A', label: 'A', color: 'green', pass: true },
+  { id: 'B', label: 'B', color: 'blue', pass: true },
+  { id: 'C', label: 'C', color: 'amber', pass: false },
+  { id: 'D', label: 'D', color: 'red', pass: false }
+];
+
+M.dictation = function() {
+  const view = M._tabs.dictation || 'bysession';
+  const cls = Store.getCurrentClass();
+  const students = getStudents();
+  const records = Store.cd('dictation');
+  let tabContent = '';
+
+  if (view === 'bysession') {
+    const sessions = [...new Map(records.map(r => [r.title + '|' + r.date, { title: r.title, date: r.date }])).values()].sort((a, b) => b.date.localeCompare(a.date));
+    const activeSession = M._dictationSession || (sessions[0] ? sessions[0].title : null);
+
+    let sessionList = '';
+    if (sessions.length) {
+      sessionList = `<div class="mb-3"><div class="text-sm text-muted mb-2">历史默写：</div><div class="flex flex-wrap gap-2">${sessions.map(s => {
+        const isActive = activeSession === s.title;
+        return `<button class="btn btn-sm ${isActive ? 'btn-primary' : 'btn-outline'}" onclick="selectDictationSession('${esc(s.title).replace(/'/g, '\\\'')}')">${esc(s.title)} <span class="text-xs opacity-70">${s.date}</span></button>`;
+      }).join('')}</div></div>`;
+    }
+
+    let body = '';
+    if (activeSession) {
+      const sessionRecords = records.filter(r => r.title === activeSession);
+      const gradeMap = {};
+      sessionRecords.forEach(r => gradeMap[r.studentId] = r.grade);
+
+      body = `<div class="card"><div class="card-title">${esc(activeSession)} · 登记 ${sessionRecords.length}/${students.length}</div>
+        <div class="grid grid-2 gap-3">${students.map(s => {
+          const current = gradeMap[s.id];
+          const gradeBtn = (g) => `<button class="btn btn-sm ${current === g.id ? 'btn-' + g.color : 'btn-ghost'}" style="min-width:44px" onclick="saveDictationGrade('${esc(activeSession).replace(/'/g, '\\\'')}','${s.id}','${esc(s.name).replace(/'/g, '\\\'')}','${g.id}')">${g.label}</button>`;
+          return `<div class="flex items-center justify-between p-2 rounded" style="background:${current ? 'var(--bg-secondary)' : '#fff'};border:1px solid var(--border-light)">
+            <div><div class="font-medium">${esc(s.name)}</div><div class="text-xs text-muted">学号 ${esc(s.no||'')}</div></div>
+            <div class="flex gap-1">${DICTATION_GRADES.map(gradeBtn).join('')}</div>
+          </div>`;
+        }).join('')}</div>
+      </div>`;
+    } else if (students.length) {
+      body = UI.empty(ICON.book, '暂无默写记录，点击上方「新建默写」开始登记');
+    } else {
+      body = UI.empty(ICON.students, '请先添加学生');
+    }
+
+    tabContent = `
+      <div class="mb-3 flex items-center gap-2 flex-wrap">
+        <button class="btn btn-primary" onclick="addDictationSession()">${ICON.plus} 新建默写</button>
+        <button class="btn btn-outline" onclick="importDictation()">${ICON.download} 导入</button>
+      </div>
+      ${sessionList}
+      ${body}
+    `;
+  } else if (view === 'bystudent') {
+    const byStudent = students.map(s => {
+      const recs = records.filter(r => r.studentId === s.id).sort((a, b) => b.date.localeCompare(a.date));
+      return { ...s, recs };
+    }).filter(s => s.recs.length);
+
+    tabContent = `
+      <div class="mb-3 flex items-center gap-2">
+        <button class="btn btn-outline" onclick="importDictation()">${ICON.download} 导入</button>
+      </div>
+      ${byStudent.length ? `<div class="grid grid-2 gap-3">${byStudent.map(s => {
+        const avg = s.recs.length ? Math.round(s.recs.reduce((a, r) => a + gradeValue(r.grade), 0) / s.recs.length * 10) / 10 : 0;
+        const failCount = s.recs.filter(r => !isDictationPass(r.grade)).length;
+        return `<div class="card"><div class="card-title">${esc(s.name)} <span class="text-sm text-muted">平均 ${avg} 分 · ${failCount} 次不及格</span></div>
+          <div class="text-sm">${s.recs.map(r => `<span class="badge badge-${DICTATION_GRADES.find(g=>g.id===r.grade)?.color||'gray'} mr-1 mb-1">${r.grade} · ${esc(r.title)}</span>`).join('')}</div>
+        </div>`;
+      }).join('')}</div>` : UI.empty(ICON.book, '暂无默写记录')}
+    `;
+  } else if (view === 'dashboard') {
+    const total = records.length;
+    const passCount = records.filter(r => isDictationPass(r.grade)).length;
+    const passRate = total ? Math.round(passCount / total * 100) : 0;
+    const gradeCounts = DICTATION_GRADES.map(g => ({ ...g, count: records.filter(r => r.grade === g.id).length }));
+    const byStudent = students.map(s => {
+      const recs = records.filter(r => r.studentId === s.id);
+      return { ...s, total: recs.length, fail: recs.filter(r => !isDictationPass(r.grade)).length, avg: recs.length ? Math.round(recs.reduce((a, r) => a + gradeValue(r.grade), 0) / recs.length * 10) / 10 : 0 };
+    }).filter(s => s.total).sort((a, b) => a.avg - b.avg || b.fail - a.fail);
+
+    tabContent = `
+      <div class="mb-3 flex items-center gap-2">
+        <button class="btn btn-outline" onclick="importDictation()">${ICON.download} 导入</button>
+      </div>
+      <div class="grid grid-4 mb-3">
+        <div class="stat-card green"><div class="stat-value">${total}</div><div class="stat-label">登记人次</div></div>
+        <div class="stat-card blue"><div class="stat-value">${passRate}%</div><div class="stat-label">及格率</div></div>
+        <div class="stat-card amber"><div class="stat-value">${records.filter(r => r.grade === 'C').length}</div><div class="stat-label">C 等级</div></div>
+        <div class="stat-card red"><div class="stat-value">${records.filter(r => r.grade === 'D').length}</div><div class="stat-label">D 等级</div></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card-title">等级分布</div>
+          <div class="chart-container" style="height:260px"><canvas id="chart-dict-grades"></canvas></div>
+        </div>
+        <div class="card"><div class="card-title">重点关注（平均分低 / 不及格多）</div>
+          ${byStudent.length ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>学生</th><th>平均分</th><th>不及格次数</th></tr></thead><tbody>${byStudent.slice(0, 15).map(s => `<tr><td>${esc(s.name)}</td><td>${s.avg}</td><td>${s.fail}</td></tr>`).join('')}</tbody></table></div>` : UI.empty(ICON.info, '暂无数据')}
+        </div>
+      </div>
+    `;
+
+    setTimeout(() => {
+      const el = document.getElementById('chart-dict-grades');
+      if (el && total) {
+        App.regChart(new Chart(el, {
+          type: 'doughnut',
+          data: {
+            labels: gradeCounts.map(g => g.label),
+            datasets: [{
+              data: gradeCounts.map(g => g.count),
+              backgroundColor: gradeCounts.map(g => CC[DICTATION_GRADES.find(dg => dg.id === g.id)?.color || 'gray']),
+              borderColor: '#fff', borderWidth: 2
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '50%', plugins: { legend: { position: 'bottom' } } }
+        }));
+      }
+    }, 50);
+  }
+
+  document.getElementById('content').innerHTML = `
+    <div class="module-header">
+      <div><div class="module-title">${ICON.book} 默写登记</div>
+      <div class="module-subtitle">${cls.name} · A/B 及格，C/D 不及格</div></div>
+    </div>
+    ${tabBar([
+      {group:'dictation',id:'bysession',label:'按次登记'},
+      {group:'dictation',id:'bystudent',label:'按生查看'},
+      {group:'dictation',id:'dashboard',label:'数据看板'}
+    ], view)}
+    ${tabContent}
+  `;
+};
+
+function gradeValue(grade) {
+  const map = { A: 4, B: 3, C: 2, D: 1 };
+  return map[grade] || 0;
+}
+
+function isDictationPass(grade) {
+  return grade === 'A' || grade === 'B';
+}
+
+function addDictationSession() {
+  const today = new Date().toISOString().slice(0, 10);
+  UI.modal('新建默写', `
+    <div class="form-group"><label class="form-label">默写名称</label><input class="form-input" id="dict-title" placeholder="如：Unit 1 单词默写"></div>
+    <div class="form-group"><label class="form-label">日期</label><input class="form-input" id="dict-date" type="date" value="${today}"></div>
+  `, `<button class="btn btn-primary" onclick="createDictationSession()">创建</button>`);
+}
+
+function createDictationSession() {
+  const title = document.getElementById('dict-title').value.trim();
+  const date = document.getElementById('dict-date').value;
+  if (!title || !date) { UI.toast('请填写名称和日期'); return; }
+  M._dictationSession = title;
+  UI.closeModal();
+  M.dictation();
+}
+
+function selectDictationSession(title) {
+  M._dictationSession = title;
+  M.dictation();
+}
+
+function saveDictationGrade(title, studentId, studentName, grade) {
+  const records = Store.cd('dictation');
+  const idx = records.findIndex(r => r.title === title && r.studentId === studentId);
+  if (idx >= 0) {
+    records[idx].grade = grade;
+  } else {
+    const date = records.find(r => r.title === title)?.date || new Date().toISOString().slice(0, 10);
+    records.push({ id: Store.uid(), title, date, studentId, studentName, grade, note: '' });
+  }
+  Store.save();
+  M.dictation();
+}
+
+function importDictation() {
+  importFromFile('dictation', rows => {
+    const records = Store.cd('dictation');
+    let count = 0;
+    rows.forEach(r => {
+      const title = r.title || r.默写名称 || r.name;
+      const date = r.date || r.日期 || new Date().toISOString().slice(0, 10);
+      const studentName = r.studentName || r.student || r.学生姓名 || r.姓名;
+      const grade = (r.grade || r.等级 || r.成绩 || 'C').toUpperCase();
+      const student = getStudents().find(s => s.name === studentName || s.no == (r.studentNo || r.学号));
+      if (title && studentName && DICTATION_GRADES.some(g => g.id === grade)) {
+        records.push({ id: Store.uid(), title, date, studentId: student ? student.id : ('unknown_' + Store.uid()), studentName, grade, note: r.note || r.备注 || '' });
+        count++;
+      }
+    });
+    return count;
+  });
+}
+
 /* ============================================================
  * 4. 学生管理
  * ============================================================ */
@@ -1048,9 +1402,10 @@ M.students = function() {
     <div class="module-header">
       <div><div class="module-title">${ICON.students} 学生管理</div>
       <div class="module-subtitle">${cls.name} · 共${students.length}人</div></div>
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
         <button class="btn btn-outline" onclick="exportStudentsWord()">${ICON.download} Word报告</button>
         <button class="btn btn-outline" onclick="exportStudents()">${ICON.upload} 导出</button>
+        <button class="btn btn-outline" onclick="importStudents()">${ICON.download} 导入</button>
         <button class="btn btn-primary" onclick="addStudent()">${ICON.plus} 添加学生</button>
       </div>
     </div>
@@ -1212,6 +1567,33 @@ function exportStudents() {
   a.download = Store.getCurrentClass().name + '_学生名单.json';
   a.click();
   UI.toast('已导出JSON');
+}
+
+function importStudents() {
+  importFromFile('students', rows => {
+    const students = getStudents();
+    const colors = ['#10b981','#3b82f6','#f59e0b','#8b5cf6','#ec4899','#06b6d4'];
+    let count = 0;
+    rows.forEach(r => {
+      const name = r.name || r.姓名 || r.studentName || r.student;
+      if (!name) return;
+      const no = r.no || r.学号 || r.number || r.id || '';
+      if (students.find(s => s.name === name && s.no === no)) return;
+      students.push({
+        id: Store.uid(),
+        name: name.trim(),
+        no: String(no).trim(),
+        gender: r.gender || r.性别 || '',
+        level: r.level || r.英语水平 || r.等级 || '',
+        parent: r.parent || r.家长 || r.parentName || '',
+        phone: r.phone || r.电话 || r.parentPhone || '',
+        note: r.note || r.备注 || '',
+        color: colors[students.length % colors.length]
+      });
+      count++;
+    });
+    return count;
+  });
 }
 
 function exportStudentsWord() {
