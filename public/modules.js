@@ -73,12 +73,14 @@ function parseCSV(text) {
 function importFromFile(moduleName, processor, options = {}) {
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = '.json,.csv,application/json,text/csv';
+  input.accept = '.json,.csv';
+  input.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
   input.onchange = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) { cleanup(); return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
+      cleanup();
       try {
         let data;
         if (file.name.endsWith('.json')) {
@@ -99,7 +101,12 @@ function importFromFile(moduleName, processor, options = {}) {
     };
     reader.readAsText(file);
   };
+  document.body.appendChild(input);
   input.click();
+  function cleanup() {
+    input.onchange = null;
+    if (input.parentNode) input.parentNode.removeChild(input);
+  }
 }
 
 function tabBar(tabs, current) {
