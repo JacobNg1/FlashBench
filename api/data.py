@@ -4,7 +4,7 @@ from typing import Dict, Any
 from api.auth import get_current_user_id
 from api.db import load_data, save_data
 
-router = APIRouter(prefix="/api/data", tags=["data"])
+router = APIRouter(prefix="/data", tags=["data"])
 
 
 class WorkbenchDataOut(BaseModel):

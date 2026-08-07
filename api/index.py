@@ -34,6 +34,17 @@ try:
         lifespan=lifespan,
     )
 
+    @app.middleware("http")
+    async def strip_api_prefix(request: Request, call_next):
+        """统一入口：Vercel 会把 /api/* 路由到本函数并剥离 /api 前缀；
+        本地 main.py 直接运行时前端仍请求 /api/*，这里做兼容剥离。"""
+        path = request.scope.get("path", "")
+        if path.startswith("/api/"):
+            request.scope["path"] = path[len("/api"):]
+        elif path == "/api":
+            request.scope["path"] = "/"
+        return await call_next(request)
+
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         return JSONResponse(
@@ -53,7 +64,7 @@ try:
     app.include_router(auth_router)
     app.include_router(data_router)
 
-    @app.get("/api/health")
+    @app.get("/health")
     async def health_check():
         db_status = "ok"
         db_error = None
@@ -74,7 +85,7 @@ try:
             },
         }
 
-    @app.get("/api/info")
+    @app.get("/info")
     async def app_info():
         return {
             "name": "Chloe的超能工作台",
