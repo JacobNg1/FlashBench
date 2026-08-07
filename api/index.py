@@ -34,17 +34,6 @@ try:
         lifespan=lifespan,
     )
 
-    @app.middleware("http")
-    async def strip_api_prefix(request: Request, call_next):
-        """统一入口：Vercel 会把 /api/* 路由到本函数并剥离 /api 前缀；
-        本地 main.py 直接运行时前端仍请求 /api/*，这里做兼容剥离。"""
-        path = request.scope.get("path", "")
-        if path.startswith("/api/"):
-            request.scope["path"] = path[len("/api"):]
-        elif path == "/api":
-            request.scope["path"] = "/"
-        return await call_next(request)
-
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         return JSONResponse(
@@ -61,10 +50,14 @@ try:
             },
         )
 
-    app.include_router(auth_router)
-    app.include_router(data_router)
+    # 同时挂载 /api/auth、/api/data 和无前缀版本，兼容 Vercel 不同的 path 传递方式
+    app.include_router(auth_router, prefix="/api/auth")
+    app.include_router(auth_router, prefix="/auth")
+    app.include_router(data_router, prefix="/api/data")
+    app.include_router(data_router, prefix="/data")
 
     @app.get("/health")
+    @app.get("/api/health")
     async def health_check():
         db_status = "ok"
         db_error = None
@@ -86,6 +79,7 @@ try:
         }
 
     @app.get("/info")
+    @app.get("/api/info")
     async def app_info():
         return {
             "name": "Chloe的超能工作台",
@@ -94,13 +88,13 @@ try:
         }
 
     @app.get("/debug")
+    @app.get("/api/debug")
     async def debug_route(request: Request):
         return {
             "path": request.scope.get("path"),
             "root_path": request.scope.get("root_path"),
             "raw_path": request.scope.get("raw_path", b"").decode("latin-1"),
             "query_string": request.scope.get("query_string", b"").decode("latin-1"),
-            "headers": {k.decode("latin-1"): v.decode("latin-1") for k, v in request.scope.get("headers", [])},
         }
 
 except Exception as e:
