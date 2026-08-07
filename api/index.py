@@ -87,16 +87,6 @@ try:
             "version": "2.0.0",
         }
 
-    @app.get("/debug")
-    @app.get("/api/debug")
-    async def debug_route(request: Request):
-        return {
-            "path": request.scope.get("path"),
-            "root_path": request.scope.get("root_path"),
-            "raw_path": request.scope.get("raw_path", b"").decode("latin-1"),
-            "query_string": request.scope.get("query_string", b"").decode("latin-1"),
-        }
-
 except Exception as e:
     _startup_error = str(e)
     _startup_traceback = traceback.format_exc()
