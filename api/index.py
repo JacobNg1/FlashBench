@@ -13,9 +13,9 @@ try:
     from fastapi.responses import JSONResponse
     from contextlib import asynccontextmanager
 
-    from api.db import init_schema, get_client
-    from api.auth import router as auth_router
-    from api.data import router as data_router
+    from app.db import init_schema, get_client
+    from app.auth import router as auth_router
+    from app.data import router as data_router
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):

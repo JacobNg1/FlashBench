@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Dict, Any
-from api.auth import get_current_user_id
-from api.db import load_data, save_data
+from app.auth import get_current_user_id
+from app.db import load_data, save_data
 
 router = APIRouter(prefix="/data", tags=["data"])
 

@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import bcrypt
 import jwt
 from pydantic import BaseModel
-from api.db import create_user, get_user_by_username, get_user_by_id
+from app.db import create_user, get_user_by_username, get_user_by_id
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
