@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eng-teacher-v12';
+const CACHE_NAME = 'eng-teacher-v15';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -14,9 +14,19 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Network first for HTML/JS/CSS — always get latest; fallback to cache
   const url = new URL(event.request.url);
-  if (url.pathname.match(/\.(html|js|css)$/) || url.pathname === '/' || url.pathname.endsWith('/')) {
+
+  // API 请求：网络优先，避免缓存旧数据
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
+  } else if (url.pathname.match(/\.(html|js|css)$/) || url.pathname === '/' || url.pathname.endsWith('/')) {
+    // HTML/JS/CSS：网络优先，获取最新代码
     event.respondWith(
       fetch(event.request).then(response => {
         const clone = response.clone();
@@ -25,7 +35,7 @@ self.addEventListener('fetch', event => {
       }).catch(() => caches.match(event.request))
     );
   } else {
-    // Cache first for images/icons/fonts
+    // 图片/图标/字体：缓存优先
     event.respondWith(
       caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
         const clone = response.clone();
