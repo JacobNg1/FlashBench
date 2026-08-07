@@ -70,6 +70,53 @@ function parseCSV(text) {
   });
 }
 
+// 解析 Excel（取第一个工作表，第一行作为表头）
+function parseExcel(buffer) {
+  if (typeof XLSX === 'undefined') throw new Error('Excel 解析库未加载，请刷新页面');
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  if (!rows || rows.length < 2) return [];
+  const headers = rows[0].map(h => String(h).trim());
+  return rows.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = String(r[i] || '').trim(); });
+    return obj;
+  });
+}
+
+// 解析 Word .docx（取第一个表格，第一行作为表头；旧版 .doc 不支持）
+async function parseWordDocx(buffer) {
+  if (typeof JSZip === 'undefined') throw new Error('Word 解析库未加载，请刷新页面');
+  const zip = await JSZip.loadAsync(buffer);
+  const xml = await zip.file('word/document.xml').async('text');
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'application/xml');
+
+  function byLocalName(parent, name) {
+    return Array.from(parent.getElementsByTagName('*')).filter(el => el.localName === name);
+  }
+
+  const tables = byLocalName(doc, 'tbl');
+  if (!tables.length) throw new Error('Word 文档中没有找到表格，请把数据放进表格后再导入');
+
+  const rows = [];
+  const trs = byLocalName(tables[0], 'tr');
+  for (const tr of trs) {
+    const cells = byLocalName(tr, 'tc').map(tc => {
+      return byLocalName(tc, 't').map(t => t.textContent).join('');
+    });
+    rows.push(cells);
+  }
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(h => String(h).trim());
+  return rows.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = String(r[i] || '').trim(); });
+    return obj;
+  });
+}
+
 function downloadTemplate(filename, headers, sampleRows) {
   const csv = [headers.join(','), ...sampleRows.map(r => r.join(','))].join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -89,7 +136,7 @@ function importFromFile(moduleName, processor, options = {}) {
   input.id = 'import-file-input';
   input.type = 'file';
   // 限制可选文件类型，移动端能直接按类型筛选
-  input.accept = '.json,.csv,.txt,application/json,text/csv,text/plain';
+  input.accept = '.json,.csv,.txt,.xlsx,.xls,.docx,.doc,application/json,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   // 放在可视区域边缘、保留 1px 尺寸，避免被浏览器视为“隐藏元素”而阻止 click
   input.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;';
   input.setAttribute('aria-hidden', 'true');
@@ -102,36 +149,39 @@ function importFromFile(moduleName, processor, options = {}) {
     if (input.parentNode) input.parentNode.removeChild(input);
   }
 
-  input.onchange = (e) => {
+  input.onchange = async (e) => {
     const file = e.target.files[0];
     cleanup();
     if (!file) return;
-    if (!file.name.match(/\.(json|csv|txt)$/i)) {
-      UI.toast('请选择 .json / .csv / .txt 文件', 'error');
+    if (!file.name.match(/\.(json|csv|txt|xlsx|xls|docx|doc)$/i)) {
+      UI.toast('请选择 .json / .csv / .txt / .xlsx / .xls / .docx 文件', 'error');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        let data;
-        if (file.name.toLowerCase().endsWith('.json')) {
-          data = JSON.parse(ev.target.result);
-          if (!Array.isArray(data) && data.data) data = data.data;
-        } else {
-          data = parseCSV(ev.target.result);
-        }
-        if (!Array.isArray(data)) { UI.toast('文件格式错误：需要对象数组'); return; }
-        const count = processor(data, options);
-        Store.save();
-        if (moduleName && typeof M[moduleName] === 'function') M[moduleName]();
-        UI.toast(`成功导入 ${count || data.length} 条记录`);
-      } catch (err) {
-        UI.toast('导入失败：' + err.message, 'error');
-        console.error(err);
+
+    try {
+      let data;
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'json') {
+        data = JSON.parse(await file.text());
+        if (!Array.isArray(data) && data.data) data = data.data;
+      } else if (ext === 'csv' || ext === 'txt') {
+        data = parseCSV(await file.text());
+      } else if (ext === 'xlsx' || ext === 'xls') {
+        data = parseExcel(await file.arrayBuffer());
+      } else if (ext === 'docx') {
+        data = await parseWordDocx(await file.arrayBuffer());
+      } else if (ext === 'doc') {
+        throw new Error('暂不支持旧版 .doc，请另存为 .docx 后再导入');
       }
-    };
-    reader.onerror = () => UI.toast('文件读取失败', 'error');
-    reader.readAsText(file);
+      if (!Array.isArray(data)) { UI.toast('文件格式错误：需要对象数组'); return; }
+      const count = processor(data, options);
+      Store.save();
+      if (moduleName && typeof M[moduleName] === 'function') M[moduleName]();
+      UI.toast(`成功导入 ${count || data.length} 条记录`);
+    } catch (err) {
+      UI.toast('导入失败：' + err.message, 'error');
+      console.error(err);
+    }
   };
 
   document.body.appendChild(input);

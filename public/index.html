@@ -13,7 +13,7 @@
   <script>
     // 版本检测：自动清理旧缓存
     (function() {
-      var ver = 'v20';
+      var ver = 'v21';
       if (localStorage.getItem('app_version') !== ver) {
         localStorage.setItem('app_version', ver);
         if ('caches' in window) {
@@ -31,7 +31,7 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=21">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
     // Chart.js 加载失败时尝试备用 CDN
@@ -53,6 +53,9 @@
       loadNext();
     })();
   </script>
+  <!-- Excel / Word 解析库 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
   <div id="app">
@@ -65,13 +68,13 @@
     <div id="modal-overlay"></div>
     <div id="toast-container"></div>
   </div>
-  <script src="auth.js?v=20"></script>
-  <script src="app.js?v=20"></script>
-  <script src="master_schedule_data.js?v=20"></script>
-  <script src="modules.js?v=20"></script>
+  <script src="auth.js?v=21"></script>
+  <script src="app.js?v=21"></script>
+  <script src="master_schedule_data.js?v=21"></script>
+  <script src="modules.js?v=21"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=20');
+      navigator.serviceWorker.register('sw.js?v=21');
     }
   </script>
 </body>
