@@ -70,20 +70,51 @@ function parseCSV(text) {
   });
 }
 
+function downloadTemplate(filename, headers, sampleRows) {
+  const csv = [headers.join(','), ...sampleRows.map(r => r.join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function importFromFile(moduleName, processor, options = {}) {
+  // 复用/清理旧的隐藏文件输入框
+  let old = document.getElementById('import-file-input');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+
   const input = document.createElement('input');
+  input.id = 'import-file-input';
   input.type = 'file';
-  input.accept = '.json,.csv';
-  input.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+  // 限制可选文件类型，移动端能直接按类型筛选
+  input.accept = '.json,.csv,.txt,application/json,text/csv,text/plain';
+  // 放在可视区域边缘、保留 1px 尺寸，避免被浏览器视为“隐藏元素”而阻止 click
+  input.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;';
+  input.setAttribute('aria-hidden', 'true');
+
+  let cleaned = false;
+  function cleanup() {
+    if (cleaned) return;
+    cleaned = true;
+    input.onchange = null;
+    if (input.parentNode) input.parentNode.removeChild(input);
+  }
+
   input.onchange = (e) => {
     const file = e.target.files[0];
-    if (!file) { cleanup(); return; }
+    cleanup();
+    if (!file) return;
+    if (!file.name.match(/\.(json|csv|txt)$/i)) {
+      UI.toast('请选择 .json / .csv / .txt 文件', 'error');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
-      cleanup();
       try {
         let data;
-        if (file.name.endsWith('.json')) {
+        if (file.name.toLowerCase().endsWith('.json')) {
           data = JSON.parse(ev.target.result);
           if (!Array.isArray(data) && data.data) data = data.data;
         } else {
@@ -99,14 +130,15 @@ function importFromFile(moduleName, processor, options = {}) {
         console.error(err);
       }
     };
+    reader.onerror = () => UI.toast('文件读取失败', 'error');
     reader.readAsText(file);
   };
+
   document.body.appendChild(input);
+  // 必须同步触发，才能继承用户点击手势（ especially iOS / 移动端浏览器）
   input.click();
-  function cleanup() {
-    input.onchange = null;
-    if (input.parentNode) input.parentNode.removeChild(input);
-  }
+  // 如果用户取消选择，部分浏览器不会触发 onchange，这里兜底清理
+  setTimeout(cleanup, 5000);
 }
 
 function tabBar(tabs, current) {
@@ -573,8 +605,9 @@ M.schedule = function() {
     <div class="module-header">
       <div><div class="module-title">${ICON.schedule} 我的课表</div>
       <div class="module-subtitle">唐楚儿 · ${cls.name}</div></div>
-      <div class="flex gap-2">
-        <button class="btn btn-outline" onclick="importSchedule()">${ICON.upload} 导入</button>
+      <div class="flex gap-2 flex-wrap">
+        <button class="btn btn-outline" onclick="downloadScheduleTemplate()">模板</button>
+        <button class="btn btn-outline" onclick="importSchedule()">${ICON.download} 导入</button>
         <button class="btn btn-primary" onclick="addScheduleLesson()">${ICON.plus} 添加课程</button>
       </div>
     </div>
