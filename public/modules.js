@@ -478,7 +478,7 @@ M.schedule = function() {
             <span class="subject">${esc(cell.subject)}</span>
             <span class="class-label">${esc(cell.class||cls.name)}</span></div>`;
         } else {
-          grid += `<div class="schedule-cell"></div>`;
+          grid += `<div class="schedule-cell schedule-cell-empty" onclick="addScheduleLesson('${d}', '${t}')" title="点击添加课程"></div>`;
         }
       });
     });
@@ -504,6 +504,9 @@ M.schedule = function() {
     <div class="module-header">
       <div><div class="module-title">${ICON.schedule} 我的课表</div>
       <div class="module-subtitle">唐楚儿 · ${cls.name}</div></div>
+      <div class="flex gap-2">
+        <button class="btn btn-primary" onclick="addScheduleLesson()">${ICON.plus} 添加课程</button>
+      </div>
     </div>
     ${tabBar([
       {group:'schedule',id:'mine',label:'我的课表'},
@@ -514,35 +517,100 @@ M.schedule = function() {
   `;
 };
 
+function scheduleFormFields(cell) {
+  const days = ['周一','周二','周三','周四','周五'];
+  const times = ['8:20-9:00','9:15-9:55','10:25-11:05','11:20-12:00','14:15-14:55','15:10-15:50','早餐/午餐','课间','午餐','午休','晚托'];
+  const subjects = ['英语','数学','语文','科学','音乐','美术','体育','阅读','班会','综合','道德与法治',''];
+  const classes = ['五（1）班','五（2）班','二（1）班','二（2）班','三（1）班','三（2）班','四（1）班','四（2）班','六（1）班','六（2）班'];
+  const types = [
+    { id: 'lesson', label: '课程' },
+    { id: 'duty', label: '值日' },
+    { id: 'meal', label: '餐管' },
+    { id: 'rest', label: '午休' },
+    { id: 'evening', label: '晚托' }
+  ];
+  const c = cell || {};
+  return `
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">星期</label>
+      <select class="form-select" id="sch-day">${days.map(d=>`<option value="${d}" ${d===c.day?'selected':''}>${d}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">类型</label>
+      <select class="form-select" id="sch-type">${types.map(t=>`<option value="${t.id}" ${t.id===c.type?'selected':''}>${t.label}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">时间段</label>
+      <input class="form-input" id="sch-time" list="sch-time-list" value="${esc(c.time||'')}" placeholder="如 8:20-9:00">
+      <datalist id="sch-time-list">${times.map(t=>`<option value="${t}">`).join('')}</datalist></div>
+      <div class="form-group"><label class="form-label">节次</label>
+      <input class="form-input" id="sch-period" value="${esc(c.period||'')}" placeholder="如 第1节"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">科目</label>
+      <select class="form-select" id="sch-subject">${subjects.map(s=>`<option value="${s}" ${s===(c.subject||'')?'selected':''}>${s||'（无）'}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">班级/地点</label>
+      <select class="form-select" id="sch-class">${classes.map(cl=>`<option value="${cl}" ${cl===(c.class||'')?'selected':''}>${cl}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">备注</label>
+    <input class="form-input" id="sch-note" value="${esc(c.note||'')}" placeholder="选填"></div>
+  `;
+}
+
+function readScheduleForm() {
+  const day = document.getElementById('sch-day').value;
+  const time = document.getElementById('sch-time').value.trim();
+  const period = document.getElementById('sch-period').value.trim();
+  const subject = document.getElementById('sch-subject').value;
+  const cls = document.getElementById('sch-class').value;
+  const type = document.getElementById('sch-type').value;
+  const note = document.getElementById('sch-note').value.trim();
+  if (!day || !time) { UI.toast('请选择星期和时间段'); return null; }
+  return { day, time, period, subject, class: cls, type, note };
+}
+
+function addScheduleLesson(day, time) {
+  UI.modal('添加课程 / 值班安排', scheduleFormFields(day || time ? { day, time } : null), `
+    <button class="btn btn-ghost" onclick="UI.closeModal()">取消</button>
+    <button class="btn btn-primary" onclick="saveScheduleLesson()">保存</button>
+  `);
+}
+
 function editScheduleLesson(id) {
   const schedule = getSchedule();
   const cell = schedule.find(s => s.id === id);
   if (!cell) return;
-  const subjects = ['英语','数学','语文','科学','音乐','美术','体育','阅读','班会','综合','道德与法治',''];
-  const classes = ['五（1）班','五（2）班','二（1）班','二（2）班','三（1）班','三（2）班','四（1）班','四（2）班','六（1）班','六（2）班'];
-  UI.modal(`编辑课程 - ${cell.day} ${cell.time}`, `
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">科目</label>
-      <select class="form-select" id="sch-subject">${subjects.map(s=>`<option value="${s}" ${s===cell.subject?'selected':''}>${s||'（无）'}</option>`).join('')}</select></div>
-      <div class="form-group"><label class="form-label">班级</label>
-      <select class="form-select" id="sch-class">${classes.map(c=>`<option value="${c}" ${c===cell.class?'selected':''}>${c}</option>`).join('')}</select></div>
-    </div>
-    <div class="form-group"><label class="form-label">备注</label>
-    <input class="form-input" id="sch-note" value="${esc(cell.note||'')}" placeholder="选填"></div>
-  `, `<button class="btn btn-danger" onclick="delScheduleLesson('${cell.id}')">删除</button>
-     <button class="btn btn-primary" onclick="saveScheduleLesson('${cell.id}')">保存</button>`);
+  UI.modal(`编辑安排 - ${cell.day} ${cell.time}`, scheduleFormFields(cell), `
+    <button class="btn btn-danger" onclick="delScheduleLesson('${cell.id}')">删除</button>
+    <button class="btn btn-primary" onclick="saveScheduleLesson('${cell.id}')">保存</button>
+  `);
 }
 
 function saveScheduleLesson(id) {
-  const cell = getSchedule().find(s => s.id === id);
-  if (!cell) return;
-  cell.subject = document.getElementById('sch-subject').value;
-  cell.class = document.getElementById('sch-class').value;
-  cell.note = document.getElementById('sch-note').value;
+  const data = readScheduleForm();
+  if (!data) return;
+  const schedule = getSchedule();
+  if (id) {
+    const cell = schedule.find(s => s.id === id);
+    if (!cell) return;
+    Object.assign(cell, data);
+  } else {
+    schedule.push({ id: Store.uid(), ...data });
+  }
   Store.save();
   UI.closeModal();
   M.schedule();
-  UI.toast('已保存');
+  UI.toast(id ? '已保存' : '已添加');
+}
+
+function delScheduleLesson(id) {
+  const schedule = getSchedule();
+  const idx = schedule.findIndex(s => s.id === id);
+  if (idx >= 0) {
+    schedule.splice(idx, 1);
+    Store.save();
+    UI.closeModal();
+    M.schedule();
+    UI.toast('已删除');
+  }
 }
 
 function addClassSwap() {
