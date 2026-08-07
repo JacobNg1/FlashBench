@@ -16,6 +16,13 @@ const Store = {
     if (!this.data.schemaVersion || this.data.schemaVersion < this.SCHEMA_VERSION) {
       this.data.schemaVersion = this.SCHEMA_VERSION;
     }
+    // 新用户没有班级时自动创建一个默认班级，避免仪表盘渲染报错
+    if (!this.data.classes || this.data.classes.length === 0) {
+      const defaultClass = { id: this.uid(), name: '五年级（1）班' };
+      this.data.classes = [defaultClass];
+      this.data.currentClassId = defaultClass.id;
+      this.save();
+    }
   },
 
   save() {

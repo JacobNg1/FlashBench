@@ -68,6 +68,10 @@ M.dashboard = function() {
   const todayNews = news.slice(0, 2);
 
   const content = document.getElementById('content');
+  if (!cls) {
+    content.innerHTML = UI.empty(ICON.users, '还没有班级，请点击左上角“选择班级”添加班级');
+    return;
+  }
   content.innerHTML = `
     <div class="module-header">
       <div><div class="module-title">${ICON.dashboard} 仪表盘</div>
