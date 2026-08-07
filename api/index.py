@@ -13,13 +13,18 @@ try:
     from fastapi.responses import JSONResponse
     from contextlib import asynccontextmanager
 
-    from api.db import init_schema
+    from api.db import init_schema, get_client
     from api.auth import router as auth_router
     from api.data import router as data_router
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        await init_schema()
+        try:
+            await init_schema()
+        except Exception as init_err:
+            # 启动时初始化失败不要直接崩掉整个应用；记录日志，让后续请求能通过全局异常处理器返回具体错误。
+            print(f"[lifespan] init_schema failed: {init_err}")
+            traceback.print_exc()
         yield
 
     app = FastAPI(
@@ -50,7 +55,24 @@ try:
 
     @app.get("/api/health")
     async def health_check():
-        return {"status": "ok", "service": "chloe-workbench"}
+        db_status = "ok"
+        db_error = None
+        try:
+            client = get_client()
+            await client.execute("SELECT 1")
+        except Exception as e:
+            db_status = "error"
+            db_error = str(e)
+        return {
+            "status": "ok",
+            "service": "chloe-workbench",
+            "db": {"status": db_status, "error": db_error},
+            "env_check": {
+                "TURSO_DATABASE_URL_set": bool(os.getenv("TURSO_DATABASE_URL")),
+                "TURSO_AUTH_TOKEN_set": bool(os.getenv("TURSO_AUTH_TOKEN")),
+                "JWT_SECRET_KEY_set": bool(os.getenv("JWT_SECRET_KEY")),
+            },
+        }
 
     @app.get("/api/info")
     async def app_info():

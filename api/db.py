@@ -3,19 +3,32 @@ import json
 from typing import Optional, Dict, Any
 from libsql_client import create_client
 
-TURSO_DATABASE_URL = os.getenv("TURSO_DATABASE_URL", "")
-TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
+TURSO_DATABASE_URL = os.getenv("TURSO_DATABASE_URL", "").strip()
+TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "").strip()
 
 _client = None
+
+
+def _normalize_turso_url(url: str) -> str:
+    """强制使用 HTTPS（HTTP 协议），避免 Vercel Serverless 里 WebSocket 握手失败。"""
+    url = url.strip()
+    if url.startswith("libsql://"):
+        url = "https://" + url[len("libsql://"):]
+    elif url.startswith("wss://"):
+        url = "https://" + url[len("wss://"):]
+    elif url.startswith("ws://"):
+        url = "http://" + url[len("ws://"):]
+    return url
 
 
 def get_client():
     global _client
     if _client is None:
-        url = TURSO_DATABASE_URL
+        url = _normalize_turso_url(TURSO_DATABASE_URL)
         token = TURSO_AUTH_TOKEN
         if not url:
             raise RuntimeError("Missing TURSO_DATABASE_URL environment variable")
+        print(f"[Turso] connecting with scheme: {url.split('://')[0]}://")
         _client = create_client(url=url, auth_token=token or None)
     return _client
 
