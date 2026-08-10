@@ -40,6 +40,19 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// 按多个别名（支持大小写不敏感）从对象中取值
+function pick(obj, ...keys) {
+  for (const k of keys) {
+    if (k in obj && obj[k] !== undefined && obj[k] !== '') return obj[k];
+  }
+  const lowerKeys = keys.map(k => String(k).toLowerCase());
+  for (const key of Object.keys(obj)) {
+    const lower = String(key).toLowerCase();
+    if (lowerKeys.includes(lower) && obj[key] !== undefined && obj[key] !== '') return obj[key];
+  }
+  return '';
+}
+
 function parseCSV(text) {
   const rows = [];
   let row = [];
@@ -117,14 +130,33 @@ async function parseWordDocx(buffer) {
   });
 }
 
-function downloadTemplate(filename, headers, sampleRows) {
-  const csv = [headers.join(','), ...sampleRows.map(r => r.join(','))].join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+function downloadStaticTemplate(path, filename) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  a.href = path;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(a.href);
+  document.body.removeChild(a);
+}
+
+function downloadScheduleTemplate() {
+  downloadStaticTemplate('templates/课表导入模板.xlsx', '课表导入模板.xlsx');
+}
+
+function downloadMasterScheduleTemplate() {
+  downloadStaticTemplate('templates/课程总表导入模板.xlsx', '课程总表导入模板.xlsx');
+}
+
+function downloadRecitationTemplate() {
+  downloadStaticTemplate('templates/背书统计导入模板.xlsx', '背书统计导入模板.xlsx');
+}
+
+function downloadDictationTemplate() {
+  downloadStaticTemplate('templates/默写登记导入模板.xlsx', '默写登记导入模板.xlsx');
+}
+
+function downloadStudentsTemplate() {
+  downloadStaticTemplate('templates/学生名单导入模板.xlsx', '学生名单导入模板.xlsx');
 }
 
 function importFromFile(moduleName, processor, options = {}) {
@@ -177,7 +209,15 @@ function importFromFile(moduleName, processor, options = {}) {
       const count = processor(data, options);
       Store.save();
       if (moduleName && typeof M[moduleName] === 'function') M[moduleName]();
-      UI.toast(`成功导入 ${count || data.length} 条记录`);
+      if (typeof count === 'number') {
+        if (count > 0) {
+          UI.toast(`成功导入 ${count} 条记录`);
+        } else {
+          UI.toast('未导入任何记录，请检查表头是否与模板一致', 'warning');
+        }
+      } else {
+        UI.toast(`导入完成：${count}`);
+      }
     } catch (err) {
       UI.toast('导入失败：' + err.message, 'error');
       console.error(err);
@@ -578,6 +618,7 @@ M.schedule = function() {
             <div class="schedule-period">${s.period||''}</div>
             <div class="schedule-subject badge badge-${color}">${esc(s.subject)}</div>
             <div class="schedule-class">${esc(s.class)}</div>
+            ${s.teacher ? `<div class="schedule-teacher text-sm text-muted">${esc(s.teacher)}</div>` : ''}
           </div>`;
         });
         html += `</div>`;
@@ -627,7 +668,8 @@ M.schedule = function() {
           const color = colorMap[cell.subject] || 'green';
           grid += `<div class="schedule-cell lesson" onclick="editScheduleLesson('${cell.id}')">
             <span class="subject">${esc(cell.subject)}</span>
-            <span class="class-label">${esc(cell.class||cls.name)}</span></div>`;
+            <span class="class-label">${esc(cell.class||cls.name)}</span>
+            ${cell.teacher ? `<span class="teacher-label">${esc(cell.teacher)}</span>` : ''}</div>`;
         } else {
           grid += `<div class="schedule-cell schedule-cell-empty" onclick="addScheduleLesson('${d}', '${t}')" title="点击添加课程"></div>`;
         }
@@ -703,8 +745,12 @@ function scheduleFormFields(cell) {
       <div class="form-group"><label class="form-label">班级/地点</label>
       <select class="form-select" id="sch-class">${classes.map(cl=>`<option value="${cl}" ${cl===(c.class||'')?'selected':''}>${cl}</option>`).join('')}</select></div>
     </div>
-    <div class="form-group"><label class="form-label">备注</label>
-    <input class="form-input" id="sch-note" value="${esc(c.note||'')}" placeholder="选填"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">任课老师</label>
+      <input class="form-input" id="sch-teacher" value="${esc(c.teacher||'')}" placeholder="选填，如 王老师"></div>
+      <div class="form-group"><label class="form-label">备注</label>
+      <input class="form-input" id="sch-note" value="${esc(c.note||'')}" placeholder="选填"></div>
+    </div>
   `;
 }
 
@@ -715,9 +761,10 @@ function readScheduleForm() {
   const subject = document.getElementById('sch-subject').value;
   const cls = document.getElementById('sch-class').value;
   const type = document.getElementById('sch-type').value;
+  const teacher = document.getElementById('sch-teacher').value.trim();
   const note = document.getElementById('sch-note').value.trim();
   if (!day || !time) { UI.toast('请选择星期和时间段'); return null; }
-  return { day, time, period, subject, class: cls, type, note };
+  return { day, time, period, subject, class: cls, type, teacher, note };
 }
 
 function addScheduleLesson(day, time) {
@@ -766,22 +813,55 @@ function delScheduleLesson(id) {
   }
 }
 
+function exportScheduleWord() {
+  const schedule = getSchedule();
+  const cls = Store.getCurrentClass();
+  const days = ['周一','周二','周三','周四','周五'];
+  const timeOrder = { '8:20-9:00':1, '9:15-9:55':2, '10:25-11:05':3, '11:20-12:00':4, '14:15-14:55':5, '15:10-15:50':6, '课间':7, '早餐/午餐':8, '午餐':8, '午休':9, '晚托':10 };
+  const byDay = {};
+  days.forEach(d => byDay[d] = []);
+  schedule.forEach(s => { if (byDay[s.day]) byDay[s.day].push(s); });
+  days.forEach(d => byDay[d].sort((a,b) => (timeOrder[a.time]||99) - (timeOrder[b.time]||99) || a.time.localeCompare(b.time)));
+  let html = `<h1>${cls.name} 我的课表</h1>`;
+  days.forEach(d => {
+    html += `<h3>${d}</h3>`;
+    if (!byDay[d].length) {
+      html += '<p>无安排</p>';
+    } else {
+      html += '<table><tr><th>时间</th><th>节次</th><th>类型</th><th>科目</th><th>班级/地点</th><th>任课老师</th><th>备注</th></tr>';
+      byDay[d].forEach(s => {
+        const typeLabel = s.type === 'lesson' ? '课程' : s.type === 'duty' ? '值日' : s.type === 'meal' ? '餐管' : s.type === 'rest' ? '午休' : '晚托';
+        html += `<tr><td>${esc(s.time)}</td><td>${esc(s.period||'')}</td><td>${typeLabel}</td><td>${esc(s.subject||'')}</td><td>${esc(s.class||'')}</td><td>${esc(s.teacher||'')}</td><td>${esc(s.note||'')}</td></tr>`;
+      });
+      html += '</table>';
+    }
+  });
+  UI.exportWord(cls.name + '我的课表', html);
+}
+
 function importSchedule() {
   importFromFile('schedule', rows => {
     const schedule = getSchedule();
     const validTypes = ['lesson', 'duty', 'meal', 'rest', 'evening'];
+    const typeAliases = { '课程': 'lesson', '正课': 'lesson', '上课': 'lesson', '课': 'lesson',
+                          '值日': 'duty', 'duty': 'duty',
+                          '餐管': 'meal', '就餐': 'meal',
+                          '午休': 'rest', '午睡': 'rest',
+                          '晚托': 'evening', '托管': 'evening' };
     let count = 0;
     rows.forEach(r => {
-      const day = r.day || r.星期 || r.日期;
-      const time = r.time || r.时间 || r.时间段;
+      const day = pick(r, 'day', '星期', '日期', '周几', '周天');
+      const time = pick(r, 'time', '时间', '时间段', '上课时间', '时段', '课时');
       if (!day || !time) return;
-      const subject = r.subject || r.科目 || '';
-      const cls = r.class || r.班级 || r['班级/地点'] || '';
-      const type = (r.type || r.类型 || 'lesson').toLowerCase();
-      const period = r.period || r.节次 || '';
-      const note = r.note || r.备注 || '';
+      const subject = pick(r, 'subject', '科目', '课程', '课程名称', '学科');
+      const cls = pick(r, 'class', '班级', '班级名称', '班级/地点', '地点', '任教班级');
+      const teacher = pick(r, 'teacher', '任课老师', '任课教师', '教师', '老师', '授课老师');
+      const rawType = String(pick(r, 'type', '类型', '课程类型', '类别') || 'lesson').toLowerCase();
+      const type = typeAliases[rawType] || (validTypes.includes(rawType) ? rawType : 'lesson');
+      const period = pick(r, 'period', '节次', '课时', '节', '第几节');
+      const note = pick(r, 'note', '备注', '说明', '备注信息');
       const id = r.id || Store.uid();
-      schedule.push({ id, day, time, period, subject, class: cls, type: validTypes.includes(type) ? type : 'lesson', note });
+      schedule.push({ id, day, time, period, subject, class: cls, teacher, type, note });
       count++;
     });
     return count;
@@ -931,6 +1011,7 @@ M.masterSchedule = function() {
       <div><div class="module-title">${ICON.grid} 课程总表</div>
       <div class="module-subtitle">宝月小学 · 全校12班</div></div>
       <div class="flex gap-2">
+        <button class="btn btn-outline" onclick="downloadMasterScheduleTemplate()">模板</button>
         <button class="btn btn-outline" onclick="importMasterSchedule()">${ICON.upload} 导入总表</button>
       </div>
     </div>
@@ -946,27 +1027,31 @@ function importMasterSchedule() {
   importFromFile('masterSchedule', data => {
     let ms;
     if (Array.isArray(data)) {
-      // CSV mode: expect columns grade, class, day, period, subject
+      // CSV mode: expect columns class, day, period, subject
       ms = {
         periods: window.MASTER_SCHEDULE ? window.MASTER_SCHEDULE.periods : [],
         schedule: {},
         teacher_tang: window.MASTER_SCHEDULE ? window.MASTER_SCHEDULE.teacher_tang : {}
       };
+      let count = 0;
       data.forEach(r => {
-        const cls = r.class || r.班级 || r['班级'];
-        const day = r.day || r.星期 || r.天;
-        const period = r.period || r.节次 || r.节;
-        const subject = r.subject || r.科目 || r.课程;
+        const cls = pick(r, 'class', '班级', '班级名称', '班级/地点', '任教班级');
+        const day = pick(r, 'day', '星期', '日期', '周几', '周天');
+        const period = pick(r, 'period', '节次', '课时', '节', '第几节', '时间');
+        const subject = pick(r, 'subject', '科目', '课程', '课程名称', '学科');
         if (!cls || !day || !period) return;
         if (!ms.schedule[cls]) ms.schedule[cls] = {};
         if (!ms.schedule[cls][day]) ms.schedule[cls][day] = {};
         ms.schedule[cls][day][period] = subject;
+        count++;
       });
+      Store.data.masterSchedule = ms;
+      return count;
     } else {
       ms = data;
+      Store.data.masterSchedule = ms;
+      return 'JSON';
     }
-    Store.data.masterSchedule = ms;
-    return Array.isArray(data) ? data.length : 'JSON';
   });
 }
 
@@ -1184,6 +1269,7 @@ M.recitation = function() {
       <div><div class="module-title">${ICON.recitation} 背书统计</div>
       <div class="module-subtitle">${cls.name} · 按书本页数登记</div></div>
       <div class="flex gap-2">
+        <button class="btn btn-outline" onclick="downloadRecitationTemplate()">模板</button>
         <button class="btn btn-outline" onclick="importRecitation()">${ICON.download} 导入</button>
       </div>
     </div>
@@ -1250,24 +1336,31 @@ function importRecitation() {
   importFromFile('recitation', rows => {
     const records = Store.cd('recitation');
     const validStatuses = RECITATION_STATUS.map(s => s.id);
+    const statusAliases = {
+      '已背': 'pass', 'pass': 'pass', '背出': 'pass', '通过': 'pass', '✓': 'pass', '√': 'pass',
+      '未背': 'fail', 'fail': 'fail', '不会': 'fail', '不通过': 'fail', '✗': 'fail', '×': 'fail', 'x': 'fail',
+      '部分': 'partial', 'partial': 'partial', '部分背出': 'partial', '△': 'partial',
+      '未登': 'none', 'none': 'none', '未登记': 'none', '未记录': 'none', '-': 'none'
+    };
     let count = 0;
     rows.forEach(r => {
-      const unit = r.unit || r.单元;
-      const page = r.page || r.页码;
-      const studentName = r.studentName || r.student || r.学生姓名 || r.姓名;
-      const status = r.status || r.状态 || 'none';
-      const date = r.date || r.日期 || todayStr();
-      const score = parseInt(r.score || r.评分 || '0', 10) || 0;
-      const remark = r.remark || r.评语 || r.备注 || '';
+      const unit = pick(r, 'unit', '单元', '单元号', 'unit号');
+      const page = pick(r, 'page', '页码', '页面', '页', 'page页');
+      const studentName = pick(r, 'studentName', 'student', '学生姓名', '姓名', '学生', '名字');
       if (!unit || !page || !studentName) return;
+      const rawStatus = String(pick(r, 'status', '状态', '背诵情况', '情况') || 'none').toLowerCase();
+      const statusKey = Object.keys(statusAliases).find(k => k.toLowerCase() === rawStatus);
+      const status = statusKey ? statusAliases[statusKey] : (validStatuses.includes(rawStatus) ? rawStatus : 'none');
+      const date = pick(r, 'date', '日期', '登记日期', '时间') || todayStr();
+      const score = parseInt(pick(r, 'score', '评分', '分数', '星级', '得分') || '0', 10) || 0;
+      const remark = pick(r, 'remark', '评语', '备注', '说明', '备注信息');
       const student = getStudents().find(s => s.name === studentName);
-      const finalStatus = validStatuses.includes(status) ? status : 'none';
       records.push({
         id: Store.uid(),
         unit, page,
         studentId: student ? student.id : ('unknown_' + Store.uid()),
         studentName,
-        status: finalStatus,
+        status,
         date,
         score,
         remark
@@ -1332,6 +1425,7 @@ M.dictation = function() {
     tabContent = `
       <div class="mb-3 flex items-center gap-2 flex-wrap">
         <button class="btn btn-primary" onclick="addDictationSession()">${ICON.plus} 新建默写</button>
+        <button class="btn btn-outline" onclick="downloadDictationTemplate()">模板</button>
         <button class="btn btn-outline" onclick="importDictation()">${ICON.download} 导入</button>
       </div>
       ${sessionList}
@@ -1345,6 +1439,7 @@ M.dictation = function() {
 
     tabContent = `
       <div class="mb-3 flex items-center gap-2">
+        <button class="btn btn-outline" onclick="downloadDictationTemplate()">模板</button>
         <button class="btn btn-outline" onclick="importDictation()">${ICON.download} 导入</button>
       </div>
       ${byStudent.length ? `<div class="grid grid-2 gap-3">${byStudent.map(s => {
@@ -1367,6 +1462,7 @@ M.dictation = function() {
 
     tabContent = `
       <div class="mb-3 flex items-center gap-2">
+        <button class="btn btn-outline" onclick="downloadDictationTemplate()">模板</button>
         <button class="btn btn-outline" onclick="importDictation()">${ICON.download} 导入</button>
       </div>
       <div class="grid grid-4 mb-3">
@@ -1467,13 +1563,15 @@ function importDictation() {
     const records = Store.cd('dictation');
     let count = 0;
     rows.forEach(r => {
-      const title = r.title || r.默写名称 || r.name;
-      const date = r.date || r.日期 || new Date().toISOString().slice(0, 10);
-      const studentName = r.studentName || r.student || r.学生姓名 || r.姓名;
-      const grade = (r.grade || r.等级 || r.成绩 || 'C').toUpperCase();
-      const student = getStudents().find(s => s.name === studentName || s.no == (r.studentNo || r.学号));
+      const title = pick(r, 'title', '默写名称', 'name', '名称', '主题', '测验名称');
+      const date = pick(r, 'date', '日期', '时间', '测验日期') || new Date().toISOString().slice(0, 10);
+      const studentName = pick(r, 'studentName', 'student', '学生姓名', '姓名', '学生', '名字');
+      const grade = String(pick(r, 'grade', '等级', '成绩', '评分', '得分', '分数') || 'C').toUpperCase();
+      const studentNo = pick(r, 'studentNo', '学号', '编号', '序号');
+      const note = pick(r, 'note', '备注', '说明', '备注信息', '评语');
+      const student = getStudents().find(s => s.name === studentName || (studentNo && s.no == studentNo));
       if (title && studentName && DICTATION_GRADES.some(g => g.id === grade)) {
-        records.push({ id: Store.uid(), title, date, studentId: student ? student.id : ('unknown_' + Store.uid()), studentName, grade, note: r.note || r.备注 || '' });
+        records.push({ id: Store.uid(), title, date, studentId: student ? student.id : ('unknown_' + Store.uid()), studentName, grade, note });
         count++;
       }
     });
@@ -1495,6 +1593,7 @@ M.students = function() {
       <div class="flex gap-2 flex-wrap">
         <button class="btn btn-outline" onclick="exportStudentsWord()">${ICON.download} Word报告</button>
         <button class="btn btn-outline" onclick="exportStudents()">${ICON.upload} 导出</button>
+        <button class="btn btn-outline" onclick="downloadStudentsTemplate()">模板</button>
         <button class="btn btn-outline" onclick="importStudents()">${ICON.download} 导入</button>
         <button class="btn btn-primary" onclick="addStudent()">${ICON.plus} 添加学生</button>
       </div>
@@ -1665,23 +1764,25 @@ function importStudents() {
     const colors = ['#10b981','#3b82f6','#f59e0b','#8b5cf6','#ec4899','#06b6d4'];
     let count = 0;
     rows.forEach(r => {
-      const name = r.name || r.姓名 || r.studentName || r.student;
+      const name = pick(r, 'name', '姓名', 'studentName', 'student', '学生姓名', '名字');
       if (!name) return;
-      const no = r.no || r.学号 || r.number || r.id || '';
-      if (students.find(s => s.name === name && s.no === no)) return;
+      const no = String(pick(r, 'no', '学号', 'number', 'id', '编号', '序号') || '').trim();
+      if (students.find(s => s.name === name && String(s.no || '').trim() === no)) return;
       students.push({
         id: Store.uid(),
         name: name.trim(),
-        no: String(no).trim(),
-        gender: r.gender || r.性别 || '',
-        level: r.level || r.英语水平 || r.等级 || '',
-        parent: r.parent || r.家长 || r.parentName || '',
-        phone: r.phone || r.电话 || r.parentPhone || '',
-        note: r.note || r.备注 || '',
-        color: colors[students.length % colors.length]
+        no: no,
+        gender: pick(r, 'gender', '性别', 'sex'),
+        avatar_color: colors[students.length % colors.length],
+        englishLevel: pick(r, 'englishLevel', '英语水平', 'level', '等级', '英语等级') || '中等',
+        parent: pick(r, 'parent', '家长', 'parentName', '家长姓名', '监护人'),
+        parentPhone: pick(r, 'parentPhone', '家长电话', '家长手机号', '家长联系方式', '电话', '联系电话'),
+        phone: pick(r, 'phone', '学生电话', '学生手机号', '学生联系方式', '手机号'),
+        notes: pick(r, 'notes', 'note', '备注', '说明')
       });
       count++;
     });
+    Store.getCurrentClass().studentCount = students.length;
     return count;
   });
 }
