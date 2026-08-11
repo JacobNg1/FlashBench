@@ -1,5 +1,7 @@
 import os
 import json
+import secrets
+import string
 from typing import Optional, Dict, Any
 from libsql_client import create_client
 
@@ -7,6 +9,12 @@ TURSO_DATABASE_URL = os.getenv("TURSO_DATABASE_URL", "").strip()
 TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "").strip()
 
 _client = None
+NANO_ID_ALPHABET = string.ascii_letters + string.digits + "_-"
+
+
+def generate_public_id(size: int = 12) -> str:
+    """生成适合展示、不可预测且无需中心协调的 Nano ID。"""
+    return "".join(secrets.choice(NANO_ID_ALPHABET) for _ in range(size))
 
 
 def _normalize_turso_url(url: str) -> str:
@@ -46,6 +54,27 @@ async def init_schema():
         )
         """
     )
+    # 兼容已部署数据库：内部整数主键继续供外键与 JWT 使用。
+    for statement in (
+        "ALTER TABLE users ADD COLUMN public_id TEXT",
+        "ALTER TABLE users ADD COLUMN nickname TEXT",
+    ):
+        try:
+            await client.execute(statement)
+        except Exception as exc:
+            if "duplicate column" not in str(exc).lower():
+                raise
+
+    pending = await client.execute(
+        "SELECT id, username, public_id, nickname FROM users WHERE public_id IS NULL OR public_id = '' OR nickname IS NULL OR nickname = ''"
+    )
+    for row in pending.rows:
+        await client.execute(
+            "UPDATE users SET public_id = ?, nickname = ? WHERE id = ?",
+            [row[2] or generate_public_id(), row[3] or row[1], row[0]],
+        )
+    await client.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id)")
+
     await client.execute(
         """
         CREATE TABLE IF NOT EXISTS workbench_data (
@@ -62,8 +91,8 @@ async def init_schema():
 async def create_user(username: str, password_hash: str) -> int:
     client = get_client()
     result = await client.execute(
-        "INSERT INTO users (username, password_hash) VALUES (?, ?) RETURNING id",
-        [username, password_hash],
+        "INSERT INTO users (username, password_hash, public_id, nickname) VALUES (?, ?, ?, ?) RETURNING id",
+        [username, password_hash, generate_public_id(), username],
     )
     return result.rows[0][0]
 
@@ -71,7 +100,7 @@ async def create_user(username: str, password_hash: str) -> int:
 async def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
     client = get_client()
     result = await client.execute(
-        "SELECT id, username, password_hash, created_at FROM users WHERE username = ?",
+        "SELECT id, username, password_hash, created_at, public_id, nickname FROM users WHERE username = ?",
         [username],
     )
     if not result.rows:
@@ -82,19 +111,27 @@ async def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
         "username": row[1],
         "password_hash": row[2],
         "created_at": row[3],
+        "public_id": row[4],
+        "nickname": row[5],
     }
 
 
 async def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
     client = get_client()
     result = await client.execute(
-        "SELECT id, username, created_at FROM users WHERE id = ?",
+        "SELECT id, username, created_at, public_id, nickname FROM users WHERE id = ?",
         [user_id],
     )
     if not result.rows:
         return None
     row = result.rows[0]
-    return {"id": row[0], "username": row[1], "created_at": row[2]}
+    return {"id": row[0], "username": row[1], "created_at": row[2], "public_id": row[3], "nickname": row[4]}
+
+
+async def update_user_nickname(user_id: int, nickname: str) -> Optional[Dict[str, Any]]:
+    client = get_client()
+    await client.execute("UPDATE users SET nickname = ? WHERE id = ?", [nickname, user_id])
+    return await get_user_by_id(user_id)
 
 
 async def load_data(user_id: int) -> Optional[Dict[str, Any]]:
