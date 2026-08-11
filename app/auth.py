@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import bcrypt
 import jwt
 from pydantic import BaseModel
-from app.db import create_user, get_user_by_username, get_user_by_id
+from app.db import create_user, get_user_by_username, get_user_by_id, update_user_nickname
 
 router = APIRouter(tags=["auth"])
 
@@ -23,8 +23,14 @@ class RegisterRequest(BaseModel):
 
 
 class UserOut(BaseModel):
-    id: int
+    id: str
     username: str
+    nickname: str
+    created_at: str
+
+
+class ProfileUpdateRequest(BaseModel):
+    nickname: str
 
 
 class TokenOut(BaseModel):
@@ -75,22 +81,24 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @router.post("/register", response_model=TokenOut)
 async def register(body: RegisterRequest):
-    if len(body.username) < 2 or len(body.username) > 32:
-        raise HTTPException(status_code=400, detail="用户名长度需在 2-32 位之间")
+    username = body.username.strip()
+    if len(username) < 6 or len(username) > 32:
+        raise HTTPException(status_code=400, detail="用户名长度需在 6-32 位之间")
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="密码长度至少 6 位")
 
-    existing = await get_user_by_username(body.username)
+    existing = await get_user_by_username(username)
     if existing:
         raise HTTPException(status_code=409, detail="用户名已被注册")
 
     password_hash = get_password_hash(body.password)
-    user_id = await create_user(body.username, password_hash)
+    user_id = await create_user(username, password_hash)
+    user = await get_user_by_id(user_id)
     access_token = create_access_token(user_id)
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user_id, "username": body.username},
+        "user": public_user(user),
     }
 
 
@@ -104,10 +112,28 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user["id"], "username": user["username"]},
+        "user": public_user(user),
     }
 
 
 @router.get("/me", response_model=UserOut)
 async def read_me(current_user=Depends(get_current_user)):
-    return {"id": current_user["id"], "username": current_user["username"]}
+    return public_user(current_user)
+
+
+def public_user(user):
+    return {
+        "id": user["public_id"],
+        "username": user["username"],
+        "nickname": user["nickname"] or user["username"],
+        "created_at": user["created_at"],
+    }
+
+
+@router.put("/profile", response_model=UserOut)
+async def update_profile(body: ProfileUpdateRequest, current_user=Depends(get_current_user)):
+    nickname = body.nickname.strip()
+    if len(nickname) < 1 or len(nickname) > 32:
+        raise HTTPException(status_code=400, detail="昵称长度需在 1-32 位之间")
+    updated = await update_user_nickname(current_user["id"], nickname)
+    return public_user(updated)

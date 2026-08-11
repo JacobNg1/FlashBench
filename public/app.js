@@ -328,6 +328,7 @@ function renderTopbar() {
   const tb = document.getElementById('topbar');
   const cls = Store.getCurrentClass();
   const user = Auth.getUser();
+  const displayName = user ? (user.nickname || user.username) : '教师';
   const now = new Date();
   const weekDays = ['日','一','二','三','四','五','六'];
   const weekNum = getSchoolWeek();
@@ -359,7 +360,7 @@ function renderTopbar() {
     </div>
     <button class="topbar-settings-btn" onclick="showSettings()" title="数据管理">${ICON.grid}</button>
     <div class="topbar-user-wrap" onclick="showUserDropdown(event)">
-      <div class="topbar-user" title="${user ? user.username : '教师'}">${user ? user.username.slice(0,1) : '师'}</div>
+      <div class="topbar-user" title="${esc(displayName)}">${esc(Array.from(displayName)[0] || '师')}</div>
       <div class="dropdown-menu" id="user-dropdown" style="right:0;left:auto;top:44px;">
         <div class="dropdown-item" onclick="showProfile()">${ICON.user}<span>个人中心</span></div>
         <div style="border-top:1px solid var(--border-light);margin:4px 0"></div>
@@ -453,7 +454,7 @@ function showSettings() {
   UI.modal('数据管理', `
     <div class="mb-4">
       <div style="font-weight:600;margin-bottom:8px">${ICON.info} 账号与存储</div>
-      <div class="text-sm text-muted">当前用户：<strong>${user ? user.username : '-'}</strong></div>
+      <div class="text-sm text-muted">当前用户：<strong>${user ? (user.nickname || user.username) : '-'}</strong></div>
       <div class="text-sm text-muted">数据大小：<strong>${sizeStr}</strong></div>
       <div class="text-sm text-muted">存储位置：Turso 云端数据库 ✨</div>
       <div class="text-sm" style="color:var(--success)">数据已自动同步到云端，换设备登录即可查看。</div>

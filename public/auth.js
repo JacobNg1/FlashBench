@@ -7,9 +7,7 @@ const Auth = {
   TOKEN_KEY: 'etw_token',
   USER_KEY: 'etw_user',
 
-  getToken() {
-    return localStorage.getItem(this.TOKEN_KEY);
-  },
+  getToken() { return localStorage.getItem(this.TOKEN_KEY); },
 
   setToken(token, user) {
     localStorage.setItem(this.TOKEN_KEY, token);
@@ -24,14 +22,14 @@ const Auth = {
   getUser() {
     const raw = localStorage.getItem(this.USER_KEY);
     if (!raw) return null;
-    try { return JSON.parse(raw); } catch(e) { return null; }
+    try { return JSON.parse(raw); } catch (e) { return null; }
   },
 
   async api(path, options = {}) {
     const url = '/api' + path;
     const headers = options.headers || {};
     const token = this.getToken();
-    if (token) headers['Authorization'] = 'Bearer ' + token;
+    if (token) headers.Authorization = 'Bearer ' + token;
     if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(options.body);
@@ -48,10 +46,7 @@ const Auth = {
   },
 
   async register(username, password) {
-    const data = await this.api('/auth/register', {
-      method: 'POST',
-      body: { username, password }
-    });
+    const data = await this.api('/auth/register', { method: 'POST', body: { username, password } });
     this.setToken(data.access_token, data.user);
     return data.user;
   },
@@ -71,6 +66,12 @@ const Auth = {
 
   async me() {
     return await this.api('/auth/me');
+  },
+
+  async updateProfile(nickname) {
+    const user = await this.api('/auth/profile', { method: 'PUT', body: { nickname } });
+    localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+    return user;
   },
 
   logout() {
@@ -93,19 +94,18 @@ function showAuthModal(mode = 'login') {
         <form id="auth-form" class="auth-form">
           <div class="form-group">
             <label>用户名</label>
-            <input type="text" id="auth-username" placeholder="取个好听的名字" required autocomplete="username">
+            <input type="text" id="auth-username" placeholder="${isLogin ? '请输入用户名' : '用户名至少 6 个字符'}" ${isLogin ? '' : 'minlength="6"'} maxlength="32" required autocomplete="username">
           </div>
           <div class="form-group">
             <label>密码</label>
-            <input type="password" id="auth-password" placeholder="至少 6 位密码" required autocomplete="${isLogin ? 'current-password' : 'new-password'}">
+            <input type="password" id="auth-password" placeholder="至少 6 位密码" minlength="6" required autocomplete="${isLogin ? 'current-password' : 'new-password'}">
           </div>
           <div id="auth-error" class="auth-error"></div>
+          ${isLogin ? '<div class="auth-forgot"><a href="#" id="auth-forgot">忘记密码？</a><span id="auth-forgot-tip"></span></div>' : ''}
           <button type="submit" class="btn btn-primary auth-submit">${isLogin ? '登录' : '注册'}</button>
         </form>
         <div class="auth-toggle">
-          ${isLogin
-            ? '还没有账号？<a href="#" id="auth-switch">去注册</a>'
-            : '已有账号？<a href="#" id="auth-switch">去登录</a>'}
+          ${isLogin ? '还没有账号？<a href="#" id="auth-switch">去注册</a>' : '已有账号？<a href="#" id="auth-switch">去登录</a>'}
         </div>
       </div>
     </div>
@@ -116,29 +116,39 @@ function showAuthModal(mode = 'login') {
   const form = document.getElementById('auth-form');
   const errorEl = document.getElementById('auth-error');
   const switchLink = document.getElementById('auth-switch');
+  const forgotLink = document.getElementById('auth-forgot');
 
-  switchLink.onclick = (e) => {
-    e.preventDefault();
+  if (forgotLink) forgotLink.onclick = (event) => {
+    event.preventDefault();
+    document.getElementById('auth-forgot-tip').textContent = '忘记密码请联系 jacob_ng@163.com';
+  };
+
+  switchLink.onclick = (event) => {
+    event.preventDefault();
     showAuthModal(isLogin ? 'register' : 'login');
   };
 
-  form.onsubmit = async (e) => {
-    e.preventDefault();
+  form.onsubmit = async (event) => {
+    event.preventDefault();
     errorEl.textContent = '';
     const username = document.getElementById('auth-username').value.trim();
     const password = document.getElementById('auth-password').value;
-    const btn = form.querySelector('.auth-submit');
-    btn.disabled = true;
-    btn.textContent = isLogin ? '登录中...' : '注册中...';
+    if (!isLogin && username.length < 6) {
+      errorEl.textContent = '用户名至少需要 6 个字符';
+      return;
+    }
+    const button = form.querySelector('.auth-submit');
+    button.disabled = true;
+    button.textContent = isLogin ? '登录中...' : '注册中...';
     try {
       if (isLogin) await Auth.login(username, password);
       else await Auth.register(username, password);
       modal.remove();
       await App.init();
-    } catch (err) {
-      errorEl.textContent = err.message;
-      btn.disabled = false;
-      btn.textContent = isLogin ? '登录' : '注册';
+    } catch (error) {
+      errorEl.textContent = error.message;
+      button.disabled = false;
+      button.textContent = isLogin ? '登录' : '注册';
     }
   };
 }
@@ -153,7 +163,7 @@ async function ensureAuth() {
     const user = await Auth.me();
     Auth.setToken(token, user);
     return true;
-  } catch (err) {
+  } catch (error) {
     showAuthModal('login');
     return false;
   }

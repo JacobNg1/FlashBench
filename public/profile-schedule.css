@@ -1,0 +1,26 @@
+.auth-forgot { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; min-height:20px; margin-top:-6px; font-size:12px; }
+.auth-forgot a { color:var(--primary); }
+#auth-forgot-tip { width:100%; color:var(--text-secondary); text-align:right; }
+.profile-avatar { display:flex; align-items:center; justify-content:center; width:76px; height:76px; margin:2px auto 20px; border:3px solid #d1fae5; border-radius:50%; color:#fff; background:linear-gradient(135deg,var(--primary),#14b8a6); font-size:30px; font-weight:700; box-shadow:0 8px 22px rgba(4,120,87,.2); }
+.profile-fixed-value { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+.form-hint { margin-top:5px; color:var(--text-tertiary); font-size:11px; }
+
+.slot-timeline-scroll { overflow-x:auto; overflow-y:hidden; max-height:none; padding:0 12px; }
+.slot-timeline { position:relative; min-width:100%; height:118px !important; margin:0; background:repeating-linear-gradient(to right,#fff 0,#fff 47px,#f1f5f9 48px); }
+.slot-timeline-track { position:absolute; inset:32px 0 12px; }
+.slot-timeline-tick { position:absolute; top:0; bottom:0; width:1px; height:auto; border:0; border-left:1px solid #dbe3ec; }
+.slot-timeline-tick.half { border-left-style:dashed; border-left-color:#e8edf3; }
+.slot-timeline-tick span { position:absolute; top:8px; left:-18px; width:40px; color:var(--text-tertiary); font-size:10px; text-align:center; }
+.slot-timeline-block { position:absolute; top:8px; right:auto; height:58px; min-width:12px; border:1px solid #6ee7b7; border-top:4px solid var(--primary); cursor:grab; }
+.slot-timeline-block.has-draft { border-color:#38bdf8; border-top-color:#0284c7; }
+.slot-timeline-content { min-width:0; flex-direction:column; justify-content:center; gap:1px; padding:4px 9px; text-align:center; }
+.slot-timeline-content strong,.slot-timeline-content span { max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+.slot-resize-handle { top:0; bottom:0; width:10px; height:100%; cursor:ew-resize; }
+.slot-resize-handle.left { left:-5px; }
+.slot-resize-handle.right { right:-5px; left:auto; }
+.slot-resize-handle:hover::after { top:18%; bottom:18%; left:4px; right:auto; border:0; border-left:2px solid #0284c7; }
+
+@media (max-width:600px) {
+  .slot-timeline { min-width:100%; }
+  .profile-avatar { width:66px; height:66px; }
+}
