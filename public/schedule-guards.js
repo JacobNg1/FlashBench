@@ -2,7 +2,7 @@
 (function () {
   const guarded = [
     'saveClassScheduleCell', 'confirmClassScheduleImport', 'saveMasterClass', 'saveMasterCell',
-    'confirmMasterImport', 'saveScheduleAdjustment', 'deleteScheduleAdjustment',
+    'confirmMasterImport', 'saveScheduleAdjustment', 'deleteScheduleAdjustment', 'saveScheduleTimelineChanges', 'cancelAdjustmentLog',
     'addScheduleSemester', 'toggleScheduleDay', 'moveScheduleSlot', 'saveScheduleSlot', 'saveScheduleTeacher',
     'setSelfScheduleTeacher', 'saveScheduleSubject', 'saveTeachingClass', 'saveSubjectTeacher'
   ];
