@@ -17,7 +17,7 @@ class WorkbenchDataIn(BaseModel):
 
 def create_empty_data() -> Dict[str, Any]:
     return {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "classes": [],
         "currentClassId": None,
         "students": {},
@@ -39,6 +39,7 @@ def create_empty_data() -> Dict[str, Any]:
         "classSwaps": [],
         "customKitQA": [],
         "examDates": {"midterm": "", "final": ""},
+        "scheduleWorkspace": None,
     }
 
 

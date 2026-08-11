@@ -20,7 +20,7 @@ const PALETTE = [CC.green, CC.blue, CC.amber, CC.purple, CC.pink, CC.cyan, CC.re
 
 /* ===== 辅助函数 ===== */
 function getStudents() { return Store.cd('students'); }
-function getSchedule() { return Store.cd('schedule'); }
+function getSchedule() { if (typeof ScheduleCore !== 'undefined' && Store.data && Store.data.scheduleWorkspace) return ScheduleCore.legacyMineRows(ScheduleCore.activeSemester(Store.data), todayStr()); return Store.cd('schedule'); }
 
 function todayStr() {
   const d = new Date();
