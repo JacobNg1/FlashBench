@@ -5,7 +5,7 @@
 
 /* ===== 数据存储层 ===== */
 const Store = {
-  SCHEMA_VERSION: 5,
+  SCHEMA_VERSION: 6,
   data: null,
   saving: false,
   saveTimer: null,
@@ -13,6 +13,9 @@ const Store = {
   async init() {
     const res = await Auth.api('/data', { method: 'GET' });
     this.data = res.data;
+    const needsScheduleMigration = !this.data.scheduleWorkspace;
+    if (typeof ScheduleCore !== 'undefined') ScheduleCore.ensure(this.data);
+    if (needsScheduleMigration) this.save();
     if (!this.data.schemaVersion || this.data.schemaVersion < this.SCHEMA_VERSION) {
       this.data.schemaVersion = this.SCHEMA_VERSION;
     }
@@ -109,7 +112,8 @@ function createEmptyData() {
     news: [],
     classSwaps: [],
     customKitQA: [],
-    examDates: { midterm: '', final: '' }
+    examDates: { midterm: '', final: '' },
+    scheduleWorkspace: null
   };
 }
 
@@ -253,8 +257,7 @@ const UI = {
 const NAV = [
   { section: '教学管理', items: [
     { id: 'dashboard', label: '仪表盘', icon: 'dashboard' },
-    { id: 'schedule', label: '我的课表', icon: 'schedule' },
-    { id: 'masterSchedule', label: '课程总表', icon: 'grid' },
+    { id: 'schedule', label: '课表', icon: 'schedule' },
     { id: 'students', label: '学生管理', icon: 'students' },
     { id: 'grades', label: '成绩分析', icon: 'grades' },
   ]},
