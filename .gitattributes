@@ -1,0 +1,11 @@
+# Treat Excel and binary files as binary to prevent line-ending corruption
+*.xlsx binary
+*.xls binary
+*.docx binary
+*.doc binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
