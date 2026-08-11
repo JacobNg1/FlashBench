@@ -216,7 +216,7 @@
       const day = a[`${side}Day`];
       return dateForDay(weekStart, day);
     };
-    (term.adjustments || []).filter(a => adjustmentApplies(a, weekStart, weekEnd)).sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || ''))).forEach(a => {
+    (term.adjustments || []).filter(a => !a.cancelledAt && adjustmentApplies(a, weekStart, weekEnd)).sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || ''))).forEach(a => {
       const sourceDate = resolveDate(a, 'source');
       const targetDate = resolveDate(a, 'target');
       if ((a.scope === 'permanent') && a.effectiveDate) {

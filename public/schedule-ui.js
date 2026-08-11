@@ -67,6 +67,7 @@ M.masterSchedule = function() { M._tabs.schedule = 'master'; App.navigate('sched
 function renderMySchedule(term) {
   const week = scheduleCurrentWeek();
   const items = ScheduleCore.getMine(term, week);
+  ScheduleUI.currentMineItems = items;
   const self = scheduleEntity(term.teachers, term.selfTeacherId);
   const byCell = new Map();
   items.forEach(x => { const key = `${x.date}:${x.slotId}`; if (!byCell.has(key)) byCell.set(key, []); byCell.get(key).push(x); });
@@ -88,7 +89,7 @@ function renderMySchedule(term) {
       cellItems.forEach(item => {
         const cls = scheduleEntity(term.classes, item.classId) || {};
         const status = scheduleStatusLabel(item.source);
-        table += `<div class="my-course ${scheduleClassHighlighted(cls) ? 'is-current-class' : ''}">
+        table += `<div class="my-course ${scheduleClassHighlighted(cls) ? 'is-current-class' : ''}" onclick="openCourseAdjustment('${item.id}')" title="点击调课">
           <div class="my-course-subject">${esc(scheduleSubjectName(term, item.subjectId))}${status ? `<span class="schedule-state">${status}</span>` : ''}</div>
           <div class="my-course-class">${esc(cls.name || '')}</div>
           ${item.conflict ? '<div class="schedule-conflict">时间冲突</div>' : ''}
@@ -156,7 +157,7 @@ async function downloadClassScheduleTemplate() {
   const options = XLSX.utils.aoa_to_sheet([['可选科目'], ...term.subjects.map(x => [x.name])]);
   const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, sheet, '班级课表'); XLSX.utils.book_append_sheet(book, options, '科目选项');
   book.Workbook = { Sheets: [{ name:'班级课表', Hidden:0 }, { name:'科目选项', Hidden:1 }] };
-  await workbookDownloadWithValidation(book, `${safeFileName(cls.name)}_班级课表模板.xlsx`, `B2:${String.fromCharCode(65 + term.weekdays.length)}${term.slots.filter(x => x.enabled !== false).length + 1}`, `'科目选项'!$A$2:$A$${term.subjects.length + 1}`);
+  workbookDownload(book, `${safeFileName(cls.name)}_班级课表模板.xlsx`);
 }
 
 function chooseExcelFile(handler) {
