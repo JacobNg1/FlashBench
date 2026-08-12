@@ -696,7 +696,7 @@ M.schedule = function() {
   document.getElementById('content').innerHTML = `
     <div class="module-header">
       <div><div class="module-title">${ICON.schedule} 我的课表</div>
-      <div class="module-subtitle">唐楚儿 · ${cls.name}</div></div>
+      <div class="module-subtitle">${esc(((Auth.getUser() || {}).nickname || (Auth.getUser() || {}).username || '教师'))} · ${esc(cls.name)}</div></div>
       <div class="flex gap-2 flex-wrap">
         <button class="btn btn-outline" onclick="downloadScheduleTemplate()">模板</button>
         <button class="btn btn-outline" onclick="importSchedule()">${ICON.download} 导入</button>
@@ -943,6 +943,7 @@ M.masterSchedule = function() {
   const viewGrade = M._tabs.masterSchedule || '全校';
   const gradeKeys = ['全校','一','二','三','四','五','六'];
 
+  const teacherName = ((Auth.getUser() || {}).nickname || (Auth.getUser() || {}).username || '教师');
   const isTang = (subject) => subject && subject.includes('唐楚儿');
 
   // Render one grade: periods as rows, days as columns, each cell shows both classes
@@ -964,7 +965,7 @@ M.masterSchedule = function() {
               const s2 = (ms.schedule[c2] && ms.schedule[c2][day] && ms.schedule[c2][day][p.id]) || '';
               const renderCell = (s) => {
                 if (!s || s === 'null') return '<span style="color:#d1d5db">—</span>';
-                return `<span style="${isTang(s)?'color:var(--primary-dark);font-weight:700;':''}font-size:12px">${esc(s)}</span>`;
+                return `<span style="${isTang(s)?'color:var(--primary-dark);font-weight:700;':''}font-size:12px">${esc(s.replace(/唐楚儿/g, teacherName))}</span>`;
               };
               return `<td style="vertical-align:top;padding:8px">${renderCell(s1)}</td><td style="vertical-align:top;padding:8px">${renderCell(s2)}</td>`;
             }).join('');
@@ -990,16 +991,16 @@ M.masterSchedule = function() {
     </div>`;
   }
 
-  // Chloe's courses summary
+  // 当前账号的课程摘要（兼容旧版教师字段）
   html += `<div class="card">
-    <div class="card-title">${ICON.user} Chloe（唐楚儿）的任教课程一览</div>
+    <div class="card-title">${ICON.user} ${esc(teacherName)}的任教课程一览</div>
     <div class="grid grid-3">
       ${Object.entries(ms.teacher_tang || {}).map(([key, val]) => `
         <div class="stat-card green">
           <div class="stat-icon green">${ICON.book}</div>
           <div>
             <div class="stat-value" style="font-size:14px">${val.time}</div>
-            <div class="stat-label">${key} · ${val.class}班 · ${val.subject.replace(/（唐楚儿[）)]?/,'').replace('英语','英语').replace('道德与法治','道法')}</div>
+            <div class="stat-label">${key} · ${val.class}班 · ${val.subject.replace(/唐楚儿/g, teacherName).replace(/[（）()]/g,'').replace('道德与法治','道法')}</div>
           </div>
         </div>
       `).join('')}
@@ -1017,7 +1018,7 @@ M.masterSchedule = function() {
     </div>
     ${tabBar(gradeKeys.map(g => ({group:'masterSchedule',id:g,label:g=== '全校'?'全校总表':g+'年级'})), viewGrade)}
     <div class="mt-3">
-      ${viewGrade === '全校' ? '<div class="text-sm text-muted mb-3">' + ICON.info + ' 绿色高亮 = 唐楚儿（Chloe）的课</div>' : ''}
+      ${viewGrade === '全校' ? '<div class="text-sm text-muted mb-3">' + ICON.info + ' 绿色高亮 = ' + esc(teacherName) + '的课</div>' : ''}
       ${html}
     </div>
   `;

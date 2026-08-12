@@ -211,7 +211,7 @@
     const tb = document.getElementById('topbar'), cls = Store.getCurrentClass(), user = Auth.getUser();
     const displayName = user ? (user.nickname || user.username) : '教师';
     const now = new Date(), weekDays = ['日','一','二','三','四','五','六'];
-    const dateStr = now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日 周' + weekDays[now.getDay()] + ' 第' + getSchoolWeek() + '周';
+    const dateStr = I18n.locale === 'en-US' ? I18n.formatDate(now, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) + ' · Week ' + getSchoolWeek() : now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日 周' + weekDays[now.getDay()] + ' 第' + getSchoolWeek() + '周';
     tb.innerHTML =
       '<button class="hamburger" onclick="toggleSidebar()">' + ICON.menu + '</button>' +
       '<div class="class-selector" onclick="showClassDropdown(event)">' + ICON.users + '<span class="class-name">' + esc(cls ? cls.name : '尚未添加班级') + '</span>' + ICON.chevronDown + '</div>' +
@@ -220,6 +220,7 @@
       (!Store.data.classes.length ? '<div class="dropdown-item muted">暂无任课班级</div>' : '') + '</div>' +
       '<button class="btn btn-outline btn-sm class-manage-button" onclick="showClassManager()">' + ICON.plus + ' 班级管理</button>' +
       '<div class="topbar-spacer"></div><div class="topbar-datetime"><div class="topbar-date">' + dateStr + '</div><div class="topbar-time" id="topbar-time">' + now.toTimeString().slice(0,8) + '</div></div>' +
+      '<button class="appearance-trigger" type="button" onclick="toggleAppearancePanel(event)" title="外观与语言" aria-label="外观与语言">' + ICON.palette + '</button>' +
       '<div class="topbar-user-wrap" onclick="showUserDropdown(event)"><div class="topbar-user" title="' + esc(displayName) + '">' + esc(Array.from(displayName)[0] || '师') + '</div>' +
       '<div class="dropdown-menu account-menu" id="user-dropdown">' +
       '<div class="dropdown-item" onclick="showProfile()">' + ICON.user + '<span>个人中心</span></div>' +
@@ -231,12 +232,12 @@
 
   window.renderSidebar = function () {
     const sb = document.getElementById('sidebar'), school = schoolData().schoolName;
-    let html = '<div class="sidebar-header"><div class="sidebar-logo">' + ICON.lesson + '</div><div><div class="sidebar-title">Chloe的工作台</div><div class="sidebar-subtitle">' + esc(school || '学校未设置') + '</div></div></div><nav class="sidebar-nav">';
+    let html = '<div class="sidebar-header"><div class="sidebar-logo">' + ICON.lesson + '</div><div><div class="sidebar-title">超能工作台</div><div class="sidebar-subtitle">' + esc(school || '学校未设置') + '</div></div></div><nav class="sidebar-nav">';
     NAV.forEach(section => {
       html += '<div class="nav-section-label">' + section.section + '</div>';
       section.items.forEach(item => { html += '<div class="nav-item ' + (App.currentModule===item.id?'active':'') + '" data-module="' + item.id + '">' + ICON[item.icon] + '<span>' + item.label + '</span></div>'; });
     });
-    sb.innerHTML = html + '</nav>';
+    sb.innerHTML = html + '</nav><div class="sidebar-footer">Powered by Gene<br><a href="mailto:wjj_gene@163.com">wjj_gene@163.com</a></div>';
     sb.querySelectorAll('.nav-item').forEach(element => {
       element.onclick = () => { App.navigate(element.dataset.module); if (window.innerWidth <= 768) closeSidebar(); };
     });
