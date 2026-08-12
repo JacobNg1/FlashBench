@@ -5,7 +5,7 @@
 
 /* ===== 数据存储层 ===== */
 const Store = {
-  SCHEMA_VERSION: 6,
+  SCHEMA_VERSION: 7,
   data: null,
   saving: false,
   saveTimer: null,
@@ -19,13 +19,11 @@ const Store = {
     if (!this.data.schemaVersion || this.data.schemaVersion < this.SCHEMA_VERSION) {
       this.data.schemaVersion = this.SCHEMA_VERSION;
     }
-    // 新用户没有班级时自动创建一个默认班级，避免仪表盘渲染报错
-    if (!this.data.classes || this.data.classes.length === 0) {
-      const defaultClass = { id: this.uid(), name: '五年级（1）班' };
-      this.data.classes = [defaultClass];
-      this.data.currentClassId = defaultClass.id;
-      this.save();
+    this.data.classes ||= [];
+    if (!this.data.classes.some(item => item.id === this.data.currentClassId)) {
+      this.data.currentClassId = (this.data.classes[0] || {}).id || null;
     }
+    if (typeof ensureWorkspaceManagementData === 'function') ensureWorkspaceManagementData(this.data);
   },
 
   save() {
@@ -113,6 +111,7 @@ function createEmptyData() {
     classSwaps: [],
     customKitQA: [],
     examDates: { midterm: '', final: '' },
+    schoolProfile: { schoolName: '', subjects: [], teachingSubjectIds: [], careerRecords: [] },
     scheduleWorkspace: null
   };
 }
