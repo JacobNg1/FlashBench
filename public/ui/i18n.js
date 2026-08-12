@@ -49,6 +49,14 @@
     "课程": "Course", "课程名称": "Course name", "班级名称": "Class name", "班级/地点": "Class / location", "周几": "Day", "节次": "Period", "第几节": "Period", "查看班级": "View class", "配置班级": "Configure class", "点击选择课程": "Select course", "点击编辑": "Edit", "教师与本人": "Teachers and me", "设为本人": "Set as me", "尚未添加教师": "No teachers yet",
     "标题": "Title", "内容": "Content", "优先级": "Priority", "紧急": "Urgent", "一般": "Normal", "高": "High", "中": "Medium", "低": "Low", "姓名": "Name", "性别": "Gender", "男": "Male", "女": "Female", "考试": "Exam", "分数": "Score", "说明": "Notes", "选填": "Optional", "知道了": "Got it"
   };
+  Object.assign(english, {
+    '周一':'Monday','周二':'Tuesday','周三':'Wednesday','周四':'Thursday','周五':'Friday','周六':'Saturday','周日':'Sunday',
+    '数据看板':'Overview','按生查看':'By student','全校':'School-wide','模板':'Template','截止日期':'Due date','原安排':'Original schedule','调至':'Move to','生效时间':'Effective time','课程/时段':'Course / period',
+    '学号':'Student ID','编号':'ID','序号':'No.','得分':'Score','评分':'Rating','评语':'Comment','等级':'Level','优秀':'Excellent','良好':'Good','中等':'Average','家长':'Guardian','家长姓名':'Guardian name','家长电话':'Guardian phone','学生电话':'Student phone','电话':'Phone','英语水平':'English level',
+    '教学内容':'Teaching content','单元':'Unit','课时':'Lessons','备注信息':'Notes','待办内容':'To-do','可选科目':'Optional subjects','科目选项':'Subject options','任教班级':'Teaching classes','学科':'Subject','星期':'Weekday',
+    '导入全校总表':'Import master schedule','下载模板':'Download template','未设置':'Not set','未配置教师':'Teacher not configured','请输入班级名称':'Enter a class name','请输入教师姓名':'Enter a teacher name','如：吴老师':'e.g. Ms. Wu','如：五（1）班':'e.g. Grade 5 Class 1',
+    '已添加':'Added','已更新':'Updated','已删除':'Deleted','已保存':'Saved','已复制':'Copied','复制失败':'Copy failed','确定删除此记录？':'Delete this record?','其他':'Other','内容':'Content','名字':'Name'
+  });
   const originals = typeof WeakMap === 'function' ? new WeakMap() : null;
   const normalizeLocale = value => value && value.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN';
   const interpolate = (value, params) => value.replace(/\{(\w+)\}/g, (_, key) => params[key] == null ? `{${key}}` : params[key]);
@@ -57,7 +65,7 @@
     const match = value.match(/^(\s*)(.*?)(\s*)$/s);
     if (!match) return value;
     if (english[match[2]]) return match[1] + english[match[2]] + match[3];
-    const selector = 'button,label,th,dt,.module-title,.module-subtitle,.card-title,.nav-item,.nav-section-label,.modal-title,.schedule-notice,.empty-state,.form-section-label,.management-title,.appearance-label,.class-dropdown-head,.tab,.stat-label,.tk-section-title,.schedule-summary-row,.schedule-free,.status-pill';
+    const selector = 'button,label,th,dt,.module-title,.module-subtitle,.card-title,.nav-item,.nav-section-label,.modal-title,.schedule-notice,.empty-state,.form-section-label,.management-title,.appearance-label,.class-dropdown-head,.tab,.stat-label,.tk-section-title,.schedule-summary-row,.schedule-free,.status-pill,.toast';
     if (!force && (!parent || !parent.closest || !parent.closest(selector))) return value;
     let translated = match[2];
     Object.keys(english).filter(key => key.length > 1).sort((a,b) => b.length - a.length).forEach(key => { translated = translated.split(key).join(english[key]); });
@@ -118,13 +126,13 @@
     translate(rootNode) { translateTree(rootNode || document.body); }
   };
   if (typeof localStorage !== 'undefined') I18n.locale = normalizeLocale(localStorage.getItem(I18n.STORAGE_KEY));
+  I18n.dictionary = english;
   root.I18n = I18n;
   if (typeof module !== 'undefined' && module.exports) module.exports = I18n;
   if (typeof document !== 'undefined') {
     document.documentElement.lang = I18n.locale;
     document.addEventListener('DOMContentLoaded', () => {
       I18n.setLocale(I18n.locale, { render: false });
-      new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(translateTree))).observe(document.body, { childList: true, subtree: true });
     });
   }
 })(typeof window !== 'undefined' ? window : globalThis);

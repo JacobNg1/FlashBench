@@ -8,12 +8,16 @@ const workspace=fs.readFileSync('public/workspace-management.js','utf8');
 const styles=fs.readFileSync('public/workspace-management.css','utf8');
 const controls=fs.readFileSync('public/ui/controls.js','utf8');
 const i18n=fs.readFileSync('public/ui/i18n.js','utf8');
+const theme=fs.readFileSync('public/ui/theme.css','utf8');
+const localization=fs.readFileSync('public/ui/localization-runtime.js','utf8');
 
 test('班级矩阵使用结构化顶栏抽屉并推动顶栏',()=>{
   assert.match(index,/id="topbar-drawer"/);
   assert.match(header,/mode: 'closed'/);
   assert.match(header,/state\.mode === 'classes'/);
-  assert.match(styles,/#topbar-drawer\.is-open \{ display:block/);
+  assert.match(styles,/grid-template-rows:0fr/);
+  assert.match(styles,/#topbar-drawer\.is-open \{ grid-template-rows:1fr/);
+  assert.match(styles,/transition:grid-template-rows \.28s ease/);
   assert.doesNotMatch(header,/class-dropdown-panel/);
 });
 
@@ -31,6 +35,8 @@ test('语言开关原地更新并使用独立受控滑块',()=>{
   assert.doesNotMatch(controls,/setTimeout\(\(\) => open/);
   assert.match(i18n,/formatNumber/);
   assert.match(i18n,/formatTime/);
+  assert.doesNotMatch(i18n,/new MutationObserver/);
+  assert.match(localization,/result\.finally\(translateContent\)/);
 });
 
 test('移动端和课表标签只有局部横向滚动',()=>{
@@ -38,6 +44,8 @@ test('移动端和课表标签只有局部横向滚动',()=>{
   assert.match(styles,/\.tabs::\-webkit-scrollbar \{ display:none/);
   assert.match(styles,/\.slot-timeline-scroll \{ overflow-x:auto; overflow-y:hidden!important/);
   assert.match(styles,/@media \(max-width:360px\)/);
+  assert.match(theme,/@media\(max-width:768px\)\{#sidebar\{position:fixed\}\}/);
+  assert.doesNotMatch(theme,/#sidebar,#main-wrapper \{ position:relative/);
 });
 
 test('工作台继续使用网页图标并保留教师导入',()=>{
