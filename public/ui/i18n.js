@@ -31,7 +31,7 @@
     '班级管理': 'Manage classes', '个人中心': 'Profile', '生涯管理': 'Career', '学期信息': 'Semesters', '数据管理': 'Data', '退出登录': 'Sign out',
     '添加': 'Add', '编辑': 'Edit', '删除': 'Delete', '保存': 'Save', '取消': 'Cancel', '确认': 'Confirm', '关闭': 'Close', '导入': 'Import', '导出': 'Export', '下载': 'Download', '上传': 'Upload', '搜索': 'Search', '重置': 'Reset',
     '暂无数据': 'No data', '暂无记录': 'No records', '操作': 'Actions', '状态': 'Status', '名称': 'Name', '日期': 'Date', '时间': 'Time', '教师': 'Teacher', '学生': 'Student', '班级': 'Class', '科目': 'Subject', '备注': 'Notes',
-    '当前学期': 'Current semester', '当前课程': 'Current lesson', '当前用户': 'Current user', '设置': 'Settings', '前往设置': 'Open settings', '使用中': 'Active', '已归档': 'Archived', '已完结': 'Completed', '任教中': 'Teaching', '中断':'Interrupted', '只读':'Read only',
+    '当前学期': 'Current semester', '当前课程': 'Current lesson', '当前用户': 'Current user', '设置': 'Settings', '前往设置': 'Open settings', '使用中': 'Active', '已归档': 'Archived', '已完结': 'Completed', '计划任教':'Planned teaching', '任教中': 'Teaching', '中断':'Interrupted', '只读':'Read only',
     '登录': 'Sign in', '注册': 'Register', '用户名': 'Username', '密码': 'Password', '忘记密码？': 'Forgot password?', '去注册': 'Register', '去登录': 'Sign in', '已有账号？': 'Already registered?', '还没有账号？': 'New here?',
     '请输入用户名': 'Enter username', '至少 6 位密码': 'At least 6 characters', '登录中...': 'Signing in...', '注册中...': 'Registering...', '创建一个新账号 🌱': 'Create a new account', '登录后继续工作吧 ✨': 'Sign in to continue',
     '系统': 'System', '浅色': 'Light', '深色': 'Dark', '语言': 'Language', '主题': 'Theme', '随机配色': 'Random theme', '外观与语言': 'Appearance & language',
@@ -56,7 +56,7 @@
     '教学内容':'Teaching content','单元':'Unit','课时':'Lessons','备注信息':'Notes','待办内容':'To-do','可选科目':'Optional subjects','科目选项':'Subject options','任教班级':'Teaching classes','学科':'Subject','星期':'Weekday',
     '导入全校总表':'Import master schedule','下载模板':'Download template','未设置':'Not set','未配置教师':'Teacher not configured','请输入班级名称':'Enter a class name','请输入教师姓名':'Enter a teacher name','如：吴老师':'e.g. Ms. Wu','如：五（1）班':'e.g. Grade 5 Class 1',
     '已添加':'Added','已更新':'Updated','已删除':'Deleted','已保存':'Saved','已复制':'Copied','复制失败':'Copy failed','确定删除此记录？':'Delete this record?','其他':'Other','内容':'Content','名字':'Name',
-    '请设置任教中的生涯':'Set an active teaching career','添加经历':'Add career','添加一段教职生涯':'Add a career record','中断的教职经历':'Interrupted career','中断记录已冻结':'Interrupted record is locked','删除记录':'Delete record','返回':'Back','时间段类型':'Slot type','显示颜色':'Display color','自定义颜色':'Custom color','历史学期只读':'Historical semester is read only','设置生涯':'Set career','查看':'View'
+    '请设置任教中的生涯':'Set an active teaching career','请设置任教中或计划任教的生涯':'Set an active or planned teaching career','添加经历':'Add career','添加一段教职生涯':'Add a career record','中断的教职经历':'Interrupted career','中断记录已冻结':'Interrupted record is locked','删除记录':'Delete record','返回':'Back','时间段类型':'Slot type','显示颜色':'Display color','自定义颜色':'Custom color','历史学期只读':'Historical semester is read only','设置生涯':'Set career','查看':'View'
   });
   const originals = typeof WeakMap === 'function' ? new WeakMap() : null;
   const normalizeLocale = value => value && value.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN';

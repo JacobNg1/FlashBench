@@ -5,7 +5,7 @@
   const messages = {
     'zh-CN': {
       'topbar.menu':'打开菜单','topbar.classSelector':'选择班级','topbar.semesterSelector':'选择全局学期','topbar.week':'{date} · 第 {week} 周','topbar.account':'账户菜单',
-      'semester.configure':'设置生涯','semester.readOnly':'只读','semester.active':'任教中',
+      'semester.configure':'设置生涯','semester.readOnly':'只读','semester.active':'任教中','semester.planned':'计划任教',
       'class.switch':'切换班级','class.manage':'班级管理','class.none':'暂无任课班级','class.add':'添加任课班级','class.grade':'年级','class.number':'班号','class.name':'班级','class.students':'学生','class.teachers':'教师','class.studentCount':'{count} 名学生','class.studentPrompt':'前往学生管理编辑“{name}”的学生信息？','class.deletePrompt':'删除“{name}”后，该班学生、成绩、作业等数据将不再显示。确定删除？','class.coreHint':'在这里统一维护学生、班主任、科任教师与联系方式。','class.close':'关闭班级区域','class.back':'返回班级管理','class.import':'导入教师配置','class.template':'下载模板',
       'teacher.setup':'{name} · 教师配置','teacher.add':'添加教师','teacher.edit':'编辑教师','teacher.name':'教师姓名','teacher.contact':'联系方式（可选）','teacher.contactHint':'手机号、邮箱或办公电话','teacher.notProvided':'未填写','teacher.homeroom':'班主任','teacher.homeroomHint':'本人也可以兼任班主任。','teacher.subjects':'各科科任教师','teacher.me':'本人','teacher.unset':'未配置','teacher.summary':'{homeroom} · {count} 位科任教师','teacher.noHomeroom':'未设置班主任',
       'common.edit':'编辑','common.delete':'删除','common.save':'保存','common.cancel':'取消','common.confirm':'确定','common.done':'完成','common.import':'导入表格','common.actions':'操作',
@@ -13,7 +13,7 @@
     },
     'en-US': {
       'topbar.menu':'Open menu','topbar.classSelector':'Select class','topbar.semesterSelector':'Select global semester','topbar.week':'{date} · Week {week}','topbar.account':'Account menu',
-      'semester.configure':'Set career','semester.readOnly':'Read only','semester.active':'Teaching',
+      'semester.configure':'Set career','semester.readOnly':'Read only','semester.active':'Teaching','semester.planned':'Planned',
       'class.switch':'Switch class','class.manage':'Manage classes','class.none':'No teaching classes','class.add':'Add teaching class','class.grade':'Grade','class.number':'Class number','class.name':'Class','class.students':'Students','class.teachers':'Teachers','class.studentCount':'{count} students','class.studentPrompt':'Open Students to edit information for “{name}”?','class.deletePrompt':'Deleting “{name}” hides its students, grades, homework, and other class data. Continue?','class.coreHint':'Manage students, homeroom teachers, subject teachers, and contact details here.','class.close':'Close class area','class.back':'Back to classes','class.import':'Import teacher setup','class.template':'Download template',
       'teacher.setup':'{name} · Teacher setup','teacher.add':'Add teacher','teacher.edit':'Edit teacher','teacher.name':'Teacher name','teacher.contact':'Contact (optional)','teacher.contactHint':'Phone, email, or office number','teacher.notProvided':'Not provided','teacher.homeroom':'Homeroom teacher','teacher.homeroomHint':'Your own account can also be the homeroom teacher.','teacher.subjects':'Subject teachers','teacher.me':'Me','teacher.unset':'Not configured','teacher.summary':'{homeroom} · {count} subject teachers','teacher.noHomeroom':'No homeroom teacher',
       'common.edit':'Edit','common.delete':'Delete','common.save':'Save','common.cancel':'Cancel','common.confirm':'Confirm','common.done':'Done','common.import':'Import spreadsheet','common.actions':'Actions',
@@ -170,7 +170,7 @@
     const now = new Date(), date = I18n.formatDate(now,{weekday:'short',year:'numeric',month:'short',day:'numeric'});
     const semesterOptions = workspace.semesters.filter(term => !term.onboarding).map(term => {
       const record = (((Store.data.schoolProfile || {}).careerRecords) || []).find(item => item.semesterId === term.id);
-      const suffix = record && record.status === '任教中' ? t('semester.active') : t('semester.readOnly');
+      const suffix = record && record.status === '任教中' ? t('semester.active') : record && record.status === '计划任教' ? t('semester.planned') : t('semester.readOnly');
       return '<option value="' + term.id + '" ' + (term.id === workspace.selectedSemesterId ? 'selected' : '') + '>' + esc(term.name) + ' · ' + suffix + '</option>';
     }).join('');
     const semesterControl = semesterOptions

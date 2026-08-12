@@ -91,6 +91,34 @@ test('中断生涯保持冻结状态且学期只读',()=>{
   assert.equal(ui.isSemesterReadOnly(term),true);
 });
 
+test('计划任教可提前编辑并在开始日期自动转为任教中',()=>{
+  const today=Core.localDate(new Date()),term=Core.newSemester('未来学期');
+  term.startDate=Core.addDays(today,10);term.endDate=Core.addDays(today,120);
+  const record={id:'career-plan',semesterId:term.id,semesterName:term.name,startDate:term.startDate,endDate:term.endDate,status:'计划任教'};
+  const data={classes:[],currentClassId:null,schoolProfile:{subjects:[],teachingSubjectIds:[],careerRecords:[record]},scheduleWorkspace:{activeSemesterId:term.id,semesters:[term]}};
+  const ui=load(data);ui.ensureWorkspaceManagementData(data);
+  assert.equal(record.status,'计划任教');
+  assert.equal(data.schoolProfile.activeCareerId,'career-plan');
+  assert.equal(term.archived,false);
+  assert.equal(ui.isSemesterReadOnly(term),false);
+  record.startDate=today;
+  ui.ensureWorkspaceManagementData(data);
+  assert.equal(record.status,'任教中');
+});
+
+test('计划任教与任教中合计只保留一条活动生涯',()=>{
+  const today=Core.localDate(new Date()),current=Core.newSemester('当前'),planned=Core.newSemester('未来');
+  current.startDate=Core.addDays(today,-10);current.endDate=Core.addDays(today,20);
+  planned.startDate=Core.addDays(today,30);planned.endDate=Core.addDays(today,120);
+  const data={classes:[],currentClassId:null,schoolProfile:{subjects:[],teachingSubjectIds:[],careerRecords:[
+    {id:'career-current',semesterId:current.id,semesterName:current.name,startDate:current.startDate,endDate:current.endDate,status:'任教中'},
+    {id:'career-plan',semesterId:planned.id,semesterName:planned.name,startDate:planned.startDate,endDate:planned.endDate,status:'计划任教'}
+  ]},scheduleWorkspace:{activeSemesterId:current.id,semesters:[current,planned]}};
+  const ui=load(data);ui.ensureWorkspaceManagementData(data);
+  assert.equal(data.schoolProfile.activeCareerId,'career-current');
+  assert.equal(data.schoolProfile.careerRecords.find(item=>item.id==='career-plan').status,'已完结');
+});
+
 test('课表管理只保留时间设置',()=>{
   const term=Core.newSemester('测试');
   term.classes=[{id:'a',name:'一年级（1）班',linkedClassId:'a',subjectTeachers:{}}];
