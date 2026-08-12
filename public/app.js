@@ -298,14 +298,21 @@ function renderTopbar() {
   `;
 }
 
+function setSidebarOpen(open) {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.toggle('open', open);
+  overlay.classList.toggle('show', open);
+  sidebar.setAttribute('aria-hidden', String(!open));
+}
+
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sidebar-overlay').classList.toggle('show');
+  const sidebar = document.getElementById('sidebar');
+  setSidebarOpen(!sidebar.classList.contains('open'));
 }
 
 function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebar-overlay').classList.remove('show');
+  setSidebarOpen(false);
 }
 
 function showClassDropdown(e) {
@@ -494,7 +501,7 @@ const App = {
 
     // 键盘ESC关闭弹窗
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') UI.closeModal();
+      if (e.key === 'Escape') { UI.closeModal(); closeSidebar(); }
     });
   },
 

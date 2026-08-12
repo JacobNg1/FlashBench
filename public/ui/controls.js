@@ -22,7 +22,7 @@
     panel.onclick=event=>{
       event.stopPropagation(); const button=event.target.closest('button'); if(!button)return;
       if(button.dataset.action==='close')return close();
-      if(button.dataset.locale){I18n.setLocale(button.dataset.locale);render(panel);return;}
+      if(button.dataset.locale){I18n.setLocale(button.dataset.locale,{render:false});I18n.refresh();render(panel);return;}
       if(button.dataset.random)Appearance.setRandomEnabled(true);
       if(button.dataset.palette)Appearance.setPalette(button.dataset.palette);
       if(button.dataset.theme)Appearance.setTheme(button.dataset.theme);

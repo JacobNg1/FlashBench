@@ -28,15 +28,56 @@
   };
   const teacherOptions = (term, selected) => '<option value="">' + t('teacher.unset') + '</option>' + (term.teachers || []).map(item => '<option value="' + item.id + '" ' + (item.id === selected ? 'selected' : '') + '>' + esc(item.name + (item.contact ? ' · ' + item.contact : '')) + '</option>').join('');
 
+  let transitionToken = 0;
+  function drawerHeight(mode, panel, wrapper) {
+    if (mode === 'manager' || mode === 'teacher') {
+      const bar = document.getElementById('topbar');
+      return Math.max(0, wrapper.clientHeight - (bar ? bar.offsetHeight : 0));
+    }
+    return panel.scrollHeight;
+  }
   function updateShell() {
     const wrapper = document.getElementById('main-wrapper');
     const panel = drawer();
     if (!wrapper || !panel) return;
-    wrapper.dataset.drawerMode = state.mode;
-    panel.className = 'topbar-drawer ' + (state.mode === 'closed' ? '' : 'is-open mode-' + state.mode);
-    panel.setAttribute('aria-hidden', state.mode === 'closed' ? 'true' : 'false');
+    const mode = state.mode, token = ++transitionToken;
+    if (mode === 'closed') {
+      wrapper.dataset.drawerMode = 'closed';
+      panel.setAttribute('aria-hidden','true');
+      panel.style.height = panel.getBoundingClientRect().height + 'px';
+      panel.classList.add('is-transitioning');
+      requestAnimationFrame(() => {
+        if (token !== transitionToken) return;
+        panel.classList.remove('is-open','mode-classes','mode-manager','mode-teacher');
+        panel.style.height = '0px';
+      });
+      const finishClose = event => {
+        if (event.propertyName !== 'height' || token !== transitionToken) return;
+        panel.removeEventListener('transitionend',finishClose);
+        panel.classList.remove('is-transitioning'); panel.innerHTML=''; panel.style.height='';
+      };
+      panel.addEventListener('transitionend',finishClose);
+      root.renderTopbar();
+      return;
+    }
+    const currentHeight = panel.getBoundingClientRect().height;
+    wrapper.dataset.drawerMode = mode;
+    panel.setAttribute('aria-hidden','false');
+    panel.style.height = currentHeight + 'px';
     renderDrawer();
+    panel.className = 'topbar-drawer is-open is-transitioning mode-' + mode;
     root.renderTopbar();
+    requestAnimationFrame(() => {
+      if (token !== transitionToken) return;
+      panel.style.height = drawerHeight(mode,panel,wrapper) + 'px';
+    });
+    const finishOpen = event => {
+      if (event.propertyName !== 'height' || token !== transitionToken) return;
+      panel.removeEventListener('transitionend',finishOpen);
+      panel.classList.remove('is-transitioning');
+      if (mode === 'classes') panel.style.height='auto';
+    };
+    panel.addEventListener('transitionend',finishOpen);
   }
 
   function classSummary(classId) {
@@ -84,7 +125,8 @@
     state,
     open(mode, classId) { state.mode = mode; if (classId) state.classId = classId; updateShell(); },
     close() { Object.assign(state,{mode:'closed',classId:'',editingTeacherId:'',studentPromptId:'',deletePromptId:''}); updateShell(); },
-    render: updateShell
+    render: updateShell,
+    refreshLocale() { renderDrawer(); root.renderTopbar(); }
   };
 
   root.showClassDropdown = function (event) { if (event) event.stopPropagation(); state.mode === 'classes' ? root.WorkspaceHeader.close() : root.WorkspaceHeader.open('classes'); };
@@ -126,6 +168,6 @@
     bar.innerHTML = '<button class="hamburger" onclick="toggleSidebar()" title="' + t('topbar.menu') + '" aria-label="' + t('topbar.menu') + '">' + ICON.menu + '</button><button type="button" class="class-selector" onclick="showClassDropdown(event)" aria-expanded="' + (state.mode === 'classes') + '" aria-label="' + t('topbar.classSelector') + '">' + ICON.users + '<span class="class-name">' + esc(cls ? cls.name : t('class.none')) + '</span>' + ICON.chevronDown + '</button><div class="topbar-spacer"></div><div class="topbar-datetime"><div class="topbar-date">' + t('topbar.week',{date,week:I18n.formatNumber(getSchoolWeek())}) + '</div><div class="topbar-time" id="topbar-time">' + I18n.formatTime(now) + '</div></div><button class="appearance-trigger" type="button" onclick="toggleAppearancePanel(event)" title="' + I18n.t('appearance.title') + '" aria-label="' + I18n.t('appearance.title') + '">' + ICON.palette + '</button><div class="topbar-user-wrap" onclick="showUserDropdown(event)"><button class="topbar-user" type="button" title="' + esc(displayName) + '" aria-label="' + t('topbar.account') + '">' + esc(Array.from(displayName)[0] || 'T') + '</button><div class="dropdown-menu account-menu" id="user-dropdown"><div class="dropdown-item" onclick="showProfile()">' + ICON.user + '<span>' + t('nav.profile') + '</span></div><div class="dropdown-item" onclick="showCareerManagement()">' + ICON.records + '<span>' + t('nav.career') + '</span></div><div class="dropdown-item" onclick="showSemesterManagement()">' + ICON.schedule + '<span>' + t('nav.semesters') + '</span></div><div class="dropdown-item" onclick="showSettings()">' + ICON.grid + '<span>' + t('nav.data') + '</span></div><div class="account-menu-separator"></div><div class="dropdown-item" onclick="Auth.logout()">' + ICON.logout + '<span>' + t('nav.logout') + '</span></div></div></div>';
   };
 
-  document.addEventListener('localechange', () => updateShell());
+  document.addEventListener('localechange', () => root.WorkspaceHeader.refreshLocale());
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && state.mode !== 'closed') root.WorkspaceHeader.close(); });
 })(window);

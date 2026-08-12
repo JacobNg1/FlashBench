@@ -65,7 +65,7 @@
     const match = value.match(/^(\s*)(.*?)(\s*)$/s);
     if (!match) return value;
     if (english[match[2]]) return match[1] + english[match[2]] + match[3];
-    const selector = 'button,label,th,dt,.module-title,.module-subtitle,.card-title,.nav-item,.nav-section-label,.modal-title,.schedule-notice,.empty-state,.form-section-label,.management-title,.appearance-label,.class-dropdown-head,.tab,.stat-label,.tk-section-title,.schedule-summary-row,.schedule-free,.status-pill,.toast';
+    const selector = 'button,label,th,dt,.module-title,.module-subtitle,.card-title,.card-subtitle,.nav-item,.nav-section-label,.modal-title,.schedule-notice,.empty-state,.form-section-label,.management-title,.appearance-label,.class-dropdown-head,.tab,.stat-label,.tk-section-title,.schedule-summary-row,.schedule-free,.status-pill,.toast,.module-header,.toolbar,.schedule-toolbar,.form-group,.management-section';
     if (!force && (!parent || !parent.closest || !parent.closest(selector))) return value;
     let translated = match[2];
     Object.keys(english).filter(key => key.length > 1).sort((a,b) => b.length - a.length).forEach(key => { translated = translated.split(key).join(english[key]); });
@@ -109,15 +109,18 @@
       if (typeof document !== 'undefined') {
         document.documentElement.lang = this.locale;
         document.title = this.t('app.name');
-        if (options.render !== false && root.App && root.App.currentModule && typeof root.App.navigate === 'function') {
-          if (typeof root.renderSidebar === 'function') root.renderSidebar();
-          if (typeof root.renderTopbar === 'function') root.renderTopbar();
-          root.App.navigate(root.App.currentModule);
-        }
-        translateTree(document.body);
+        if (options.render !== false) this.refresh();
         document.dispatchEvent(new CustomEvent('localechange', { detail: this.locale }));
       }
       return this.locale;
+    },
+    refresh() {
+      if (typeof root.renderSidebar === 'function') root.renderSidebar();
+      if (root.App && root.App.currentModule && typeof root.App.navigate === 'function') root.App.navigate(root.App.currentModule);
+      if (root.WorkspaceHeader && typeof root.WorkspaceHeader.refreshLocale === 'function') root.WorkspaceHeader.refreshLocale();
+      else if (typeof root.renderTopbar === 'function') root.renderTopbar();
+      translateTree(document.body);
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => translateTree(document.body));
     },
     formatDate(value, options) { return new Intl.DateTimeFormat(this.locale, options).format(value); },
     formatTime(value) { return new Intl.DateTimeFormat(this.locale, { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(value); },
