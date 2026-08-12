@@ -489,7 +489,7 @@ const App = {
     // 实时时钟
     setInterval(() => {
       const el = document.getElementById('topbar-time');
-      if (el) el.textContent = new Date().toTimeString().slice(0, 8);
+      if (el) el.textContent = I18n.formatTime(new Date());
     }, 1000);
 
     // 键盘ESC关闭弹窗
