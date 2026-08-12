@@ -51,7 +51,13 @@ body::after { width:380px;height:380px;right:-80px;bottom:-120px;background:var(
 .language-segmented{position:relative;isolation:isolate}.language-slider{position:absolute;z-index:0;left:3px;top:3px;width:calc(50% - 3px);height:calc(100% - 6px);border-radius:8px;background:var(--surface-raised);box-shadow:var(--shadow-sm);transition:transform .22s ease}.language-segmented[data-locale="en-US"] .language-slider{transform:translateX(100%)}.language-segmented button{position:relative;z-index:1;background:transparent!important;box-shadow:none!important}.language-segmented button.active{color:var(--primary)}
 .sidebar-footer{margin-top:auto;padding:14px 18px;color:rgba(255,255,255,.62);font-size:11px;line-height:1.5;border-top:1px solid rgba(255,255,255,.08)}.sidebar-footer a{color:inherit;text-decoration:none}.sidebar-footer a:hover{color:#fff;text-decoration:underline}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--focus-ring)!important;outline-offset:2px}
-@media(max-width:768px){#sidebar{position:fixed}}
+@media(max-width:768px){
+  body #sidebar{position:fixed;z-index:1001;visibility:hidden;pointer-events:none;background:linear-gradient(180deg,var(--sidebar-start),var(--sidebar-end));backdrop-filter:none;-webkit-backdrop-filter:none;transition:transform .3s cubic-bezier(.22,1,.36,1),visibility 0s linear .3s}
+  body #sidebar.open{visibility:visible;pointer-events:auto;transition:transform .3s cubic-bezier(.22,1,.36,1),visibility 0s}
+  body #sidebar-overlay{display:block;z-index:1000;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s ease,visibility 0s linear .25s}
+  body #sidebar-overlay.show{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .25s ease,visibility 0s}
+  :root[data-theme="glass"] body #sidebar{background:linear-gradient(180deg,var(--sidebar-start),var(--sidebar-end));backdrop-filter:none;-webkit-backdrop-filter:none}
+}
 @media(max-width:600px){.appearance-panel{right:12px;top:62px}.theme-grid{grid-template-columns:repeat(2,1fr)}.topbar-datetime{display:none}.random-card{grid-column:span 2}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 @media print{#sidebar,#topbar,.appearance-panel,#sidebar-overlay{display:none!important}#main-wrapper{margin:0!important}body{background:#fff!important;color:#000!important}.card{box-shadow:none!important;border:1px solid #bbb!important}}
