@@ -1,0 +1,29 @@
+.class-manage-button { flex:none; }
+.account-menu { right:0 !important; left:auto !important; top:44px !important; min-width:190px; }
+.account-menu-separator { border-top:1px solid var(--border-light); margin:4px 0; }
+.management-section { margin-bottom:20px; padding-bottom:18px; border-bottom:1px solid var(--border-light); }
+.management-section:last-child { border-bottom:0; }
+.management-title { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; color:var(--text-primary); font-size:14px; font-weight:700; }
+.management-check-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:8px; }
+.management-check { cursor:pointer; }
+.management-check input { position:absolute; opacity:0; pointer-events:none; }
+.management-check span { display:block; padding:8px 6px; border:1px solid var(--border); border-radius:16px; color:var(--text-secondary); text-align:center; font-size:12px; transition:.15s; }
+.management-check input:checked + span { border-color:#6ee7b7; background:#ecfdf5; color:#047857; font-weight:600; }
+.career-table tbody tr { cursor:pointer; }
+.career-table tbody tr:hover td { background:#f0fdf4; }
+.empty-class-guide { text-align:center; }
+.empty-class-guide .btn { margin-bottom:20px; }
+.dropdown-item.muted { cursor:default; color:var(--text-tertiary); }
+.dropdown-item.muted:hover { background:#fff; }
+
+@media(max-width:760px){
+  .class-manage-button { padding:7px 9px; }
+  .class-manage-button svg { display:none; }
+  .management-check-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:520px){
+  .topbar-datetime { display:none; }
+  .class-manage-button { font-size:0; }
+  .class-manage-button::after { content:'管理'; font-size:12px; }
+  .management-check-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
