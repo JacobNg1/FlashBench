@@ -1,8 +1,8 @@
 <div align="center">
 
-# ⚡ 超能工作台
+# ⚡ A-techer
 
-**一位小学老师的一站式教学数字化助手**
+**🌶️ 科技加持的麻辣鲜师**
 
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel&logoColor=white)](https://vercel.com/new)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -22,9 +22,11 @@
 
 ## 🎀 这是什么？
 
-**超能工作台** 是专为小学老师设计的轻量级教学工作台。
+**A-techer** 是专为小学老师设计的轻量级教学工作台。
 
 它把日常的 **课表、学生管理、成绩分析、作业、背书统计、谈话记录、家校沟通、待办备忘** 等模块整合在一个可爱的 PWA 应用里，手机、平板、电脑都能用 📱💻
+
+头像菜单中的“关于”页集中展示网站简介、品牌口号和当前版本。正式版本发布前显示为开发版，之后只需更新应用版本常量。
 
 > 💡 核心理念：**一个老师，一组任课班级，一个统一工作台。** 顶部班级是学生、成绩、作业、沟通和课表的唯一数据入口，老师只需维护自己真正任教的班级。
 
@@ -75,7 +77,7 @@
 先确保项目已推送到 GitHub：
 
 ```bash
-git clone git@github.com:chloe-sugar/FlashBench.git
+git clone git@github.com:JacobNg1/FlashBench.git
 cd FlashBench
 ```
 

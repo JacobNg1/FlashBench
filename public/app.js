@@ -1,7 +1,13 @@
 /* ============================================================
- * 超能工作台 - 核心引擎
+ * A-techer - 核心引擎
  * 数据层 / 图标 / UI工具 / 布局 / 路由
  * ============================================================ */
+
+window.APP_INFO = Object.freeze({
+  name: 'A-techer',
+  slogan: '🌶️ 科技加持的麻辣鲜师',
+  version: 'dev'
+});
 
 /* ===== 数据存储层 ===== */
 const Store = {
@@ -212,7 +218,7 @@ function renderSidebar() {
   const sb = document.getElementById('sidebar');
   let html = `<div class="sidebar-header">
     <div class="sidebar-logo">${ICON.lesson}</div>
-    <div><div class="sidebar-title">超能工作台</div><div class="sidebar-subtitle">宝月小学 · 五年级</div></div>
+    <div><div class="sidebar-title">A-techer</div><div class="sidebar-subtitle">宝月小学 · 五年级</div></div>
   </div><nav class="sidebar-nav">`;
 
   NAV.forEach(sec => {
@@ -292,6 +298,7 @@ function renderTopbar() {
       <div class="dropdown-menu" id="user-dropdown" style="right:0;left:auto;top:44px;">
         <div class="dropdown-item" onclick="showProfile()">${ICON.user}<span>个人中心</span></div>
         <div class="dropdown-item" onclick="showCareerManagement()">${ICON.records}<span>生涯管理</span></div>
+        <div class="dropdown-item" onclick="showAbout()">${ICON.info}<span>关于</span></div>
         <div style="border-top:1px solid var(--border-light);margin:4px 0"></div>
         <div class="dropdown-item" onclick="Auth.logout()">${ICON.logout}<span>退出登录</span></div>
       </div>
@@ -344,6 +351,22 @@ function showProfile() {
     <div class="form-group"><label class="form-label">用户 ID</label>
     <input class="form-input" value="${esc(user ? user.id : '')}" disabled></div>
   `, `<button class="btn btn-primary" onclick="UI.closeModal()">知道了</button>`);
+}
+
+function showAbout() {
+  const info = window.APP_INFO;
+  UI.modal(I18n.t('about.title'), `
+    <section class="about-panel">
+      <img class="about-logo" src="favicon.svg" alt="">
+      <h2>${esc(info.name)}</h2>
+      <p class="about-slogan">${esc(info.slogan)}</p>
+      <p class="about-description">${esc(I18n.t('about.description'))}</p>
+      <dl class="about-meta">
+        <div><dt>${I18n.t('about.version')}</dt><dd>${info.version === 'dev' ? I18n.t('about.development') : esc(info.version)}</dd></div>
+        <div><dt>${I18n.t('about.releaseStatus')}</dt><dd>${I18n.t(info.version === 'dev' ? 'about.unreleased' : 'about.released')}</dd></div>
+      </dl>
+    </section>
+  `, `<button class="btn btn-primary" onclick="UI.closeModal()">${I18n.t('common.done')}</button>`);
 }
 
 function switchClass(id) {
@@ -437,7 +460,7 @@ function exportAllData() {
   const blob = new Blob([jsonStr], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const label = '超能工作台_备份_' + todayStr() + '.json';
+  const label = 'A-techer_备份_' + todayStr() + '.json';
   a.href = url;
   a.download = label;
   a.click();

@@ -1,7 +1,7 @@
 {
-  "name": "超能工作台",
-  "short_name": "超能工作台",
-  "description": "面向教师的一站式教学工作台",
+  "name": "A-techer",
+  "short_name": "A-techer",
+  "description": "A-techer — 科技加持的麻辣鲜师",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f7f6ff",

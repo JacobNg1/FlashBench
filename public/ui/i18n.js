@@ -1,7 +1,8 @@
 (function (root) {
   const messages = {
     'zh-CN': {
-      'app.name': '超能工作台', 'app.powered': 'Powered by Gene',
+      'app.name': 'A-techer', 'app.powered': 'Powered by Gene',
+      'about.title': '关于 A-techer', 'about.description': 'A-techer 是面向教师的轻量教学工作台，将课表、班级、学生、成绩、作业与沟通记录集中在一个界面中。', 'about.version': '版本', 'about.releaseStatus': '发布状态', 'about.development': '开发版', 'about.unreleased': '未正式发布', 'about.released': '正式发布',
       'auth.login': '登录', 'auth.register': '注册', 'auth.username': '用户名', 'auth.password': '密码',
       'appearance.title': '外观与语言', 'appearance.theme': '主题', 'appearance.style': '主题风格', 'appearance.palette': '主题配色', 'appearance.mode': '明暗模式',
       'appearance.system': '跟随系统', 'appearance.light': '浅色', 'appearance.dark': '深色',
@@ -12,7 +13,8 @@
       'theme.indigo': '靛蓝', 'theme.emerald': '翡翠', 'theme.graphite': '石墨'
     },
     'en-US': {
-      'app.name': 'Power Workspace', 'app.powered': 'Powered by Gene',
+      'app.name': 'A-techer', 'app.powered': 'Powered by Gene',
+      'about.title': 'About A-techer', 'about.description': 'A-techer is a lightweight teaching workspace that brings schedules, classes, students, grades, assignments, and communication records together.', 'about.version': 'Version', 'about.releaseStatus': 'Release status', 'about.development': 'Development build', 'about.unreleased': 'Not formally released', 'about.released': 'Released',
       'auth.login': 'Sign in', 'auth.register': 'Register', 'auth.username': 'Username', 'auth.password': 'Password',
       'appearance.title': 'Appearance & language', 'appearance.theme': 'Theme', 'appearance.style': 'Visual style', 'appearance.palette': 'Color palette', 'appearance.mode': 'Color mode',
       'appearance.system': 'System', 'appearance.light': 'Light', 'appearance.dark': 'Dark',
@@ -24,11 +26,11 @@
     }
   };
   const english = {
-    '超能工作台': 'Power Workspace', '教学管理': 'Teaching', '日常教学': 'Daily teaching', '沟通记录': 'Communication', '工具资源': 'Tools & resources',
+    'A-techer': 'A-techer', '教学管理': 'Teaching', '日常教学': 'Daily teaching', '沟通记录': 'Communication', '工具资源': 'Tools & resources',
     '仪表盘': 'Dashboard', '课表': 'Schedule', '我的课表': 'My schedule', '班级课表': 'Class schedule', '课程总表': 'Master schedule', '课表管理': 'Schedule settings',
     '学生管理': 'Students', '成绩分析': 'Grades', '作业管理': 'Homework', '背书统计': 'Recitation', '默写登记': 'Dictation', '教师备课': 'Lesson planning', '教师锦囊': 'Teaching toolkit',
     '工作留痕': 'Work log', '谈话记录': 'Conversations', '家校沟通': 'Family communication', '待办备忘': 'To-dos', '学习资源': 'Learning resources', '绘本资源': 'Picture books', '时政热点': 'Current affairs',
-    '班级管理': 'Manage classes', '个人中心': 'Profile', '生涯管理': 'Career', '学期信息': 'Semesters', '数据管理': 'Data', '退出登录': 'Sign out',
+    '班级管理': 'Manage classes', '个人中心': 'Profile', '生涯管理': 'Career', '学期信息': 'Semesters', '数据管理': 'Data', '关于': 'About', '退出登录': 'Sign out',
     '添加': 'Add', '编辑': 'Edit', '删除': 'Delete', '保存': 'Save', '取消': 'Cancel', '确认': 'Confirm', '关闭': 'Close', '导入': 'Import', '导出': 'Export', '下载': 'Download', '上传': 'Upload', '搜索': 'Search', '重置': 'Reset',
     '暂无数据': 'No data', '暂无记录': 'No records', '操作': 'Actions', '状态': 'Status', '名称': 'Name', '日期': 'Date', '时间': 'Time', '教师': 'Teacher', '学生': 'Student', '班级': 'Class', '科目': 'Subject', '备注': 'Notes',
     '当前学期': 'Current semester', '当前课程': 'Current lesson', '当前用户': 'Current user', '设置': 'Settings', '前往设置': 'Open settings', '使用中': 'Active', '已归档': 'Archived', '已完结': 'Completed', '计划任教':'Planned teaching', '任教中': 'Teaching', '中断':'Interrupted', '只读':'Read only',

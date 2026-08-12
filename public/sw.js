@@ -1,4 +1,4 @@
-const CACHE_NAME = 'power-workspace-v38';
+const CACHE_NAME = 'a-techer-v39';
 
 self.addEventListener('install', event => {
   self.skipWaiting();

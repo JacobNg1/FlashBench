@@ -593,6 +593,17 @@ table.data-table {
 
 .modal-body { padding: 20px; }
 
+.about-panel { text-align:center; padding:8px 4px 4px; }
+.about-logo { width:72px; height:72px; display:block; margin:0 auto 12px; border-radius:18px; box-shadow:var(--shadow-md); }
+.about-panel h2 { margin:0; font-size:24px; letter-spacing:-.02em; }
+.about-slogan { display:inline-block; margin:10px 0 18px; padding:7px 12px; border-radius:999px; background:var(--primary-bg); color:var(--primary); font-weight:650; }
+.about-description { max-width:440px; margin:0 auto 20px; color:var(--text-secondary); line-height:1.7; }
+.about-meta { margin:0; padding:0; border:1px solid var(--border-light); border-radius:var(--radius); overflow:hidden; text-align:left; }
+.about-meta div { display:flex; justify-content:space-between; gap:20px; padding:11px 14px; }
+.about-meta div + div { border-top:1px solid var(--border-light); }
+.about-meta dt { color:var(--text-secondary); }
+.about-meta dd { margin:0; font-weight:650; color:var(--text-primary); }
+
 .modal-footer {
   padding: 14px 20px;
   border-top: 1px solid var(--border-light);

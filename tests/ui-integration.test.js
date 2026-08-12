@@ -67,6 +67,18 @@ test('顶栏使用全局学期控件且账户菜单与外观面板互斥',()=>{
   assert.match(theme,/\.account-menu\{background:linear-gradient/);
 });
 
+test('A-techer 品牌与关于页提供集中版本信息',()=>{
+  const app=fs.readFileSync('public/app.js','utf8');
+  const manifest=JSON.parse(fs.readFileSync('public/manifest.json','utf8'));
+  assert.match(index,/<title>A-techer<\/title>/);
+  assert.equal(manifest.name,'A-techer');
+  assert.match(app,/window\.APP_INFO = Object\.freeze/);
+  assert.match(app,/🌶️ 科技加持的麻辣鲜师/);
+  assert.match(app,/function showAbout\(\)/);
+  assert.match(header,/onclick="showAbout\(\)"/);
+  assert.match(index,/var ver = 'v39'/);
+});
+
 test('课表提供主题滚动条、时段配色和过去日期状态',()=>{
   const schedule=fs.readFileSync('public/schedule-ui.js','utf8');
   const scheduleCss=fs.readFileSync('public/schedule-ui.css','utf8');

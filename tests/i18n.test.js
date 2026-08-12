@@ -1,12 +1,13 @@
 const assert = require('node:assert/strict');
 const I18n = require('../public/ui/i18n.js');
-assert.equal(I18n.t('app.name'), '超能工作台');
+assert.equal(I18n.t('app.name'), 'A-techer');
 assert.equal(I18n.t('missing.key'), 'missing.key');
 I18n.messages['zh-CN']['test.hello'] = '你好，{name}';
 assert.equal(I18n.t('test.hello', { name: 'Gene' }), '你好，Gene');
 I18n.setLocale('en');
 assert.equal(I18n.locale, 'en-US');
-assert.equal(I18n.t('app.name'), 'Power Workspace');
+assert.equal(I18n.t('app.name'), 'A-techer');
+assert.equal(I18n.t('about.title'), 'About A-techer');
 assert.equal(I18n.formatNumber(1234), '1,234');
 assert.match(I18n.formatDate(new Date('2026-08-12T00:00:00Z'), {year:'numeric'}), /2026/);
 assert.equal(I18n.t('test.hello', { name: 'Gene' }), '你好，Gene');

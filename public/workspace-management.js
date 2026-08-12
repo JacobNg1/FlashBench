@@ -425,13 +425,14 @@
       '<div class="dropdown-item" onclick="showProfile()">' + ICON.user + '<span>个人中心</span></div>' +
       '<div class="dropdown-item" onclick="showCareerManagement()">' + ICON.records + '<span>生涯管理</span></div>' +
       '<div class="dropdown-item" onclick="showSettings()">' + ICON.grid + '<span>数据管理</span></div>' +
+      '<div class="dropdown-item" onclick="showAbout()">' + ICON.info + '<span>关于</span></div>' +
       '<div class="account-menu-separator"></div><div class="dropdown-item" onclick="Auth.logout()">' + ICON.logout + '<span>退出登录</span></div></div></div>';
   };
 
   window.renderSidebar = function () {
     const sb = document.getElementById('sidebar'), active = getActiveCareer();
     const subtitle = active ? [active.schoolName || '学校未设置', active.semesterName || active.period, active.status].filter(Boolean).join(' · ') : '请设置任教中或计划任教的生涯';
-    let html = '<div class="sidebar-header"><div class="sidebar-logo"><img src="favicon.svg" alt=""></div><div><div class="sidebar-title">超能工作台</div><button type="button" class="sidebar-subtitle career-subtitle" onclick="showCareerManagement()">' + esc(subtitle) + '</button></div></div><nav class="sidebar-nav">';
+    let html = '<div class="sidebar-header"><div class="sidebar-logo"><img src="favicon.svg" alt=""></div><div><div class="sidebar-title">A-techer</div><button type="button" class="sidebar-subtitle career-subtitle" onclick="showCareerManagement()">' + esc(subtitle) + '</button></div></div><nav class="sidebar-nav">';
     NAV.forEach(section => {
       html += '<div class="nav-section-label">' + section.section + '</div>';
       section.items.forEach(item => { html += '<div class="nav-item ' + (App.currentModule===item.id?'active':'') + '" data-module="' + item.id + '">' + ICON[item.icon] + '<span>' + item.label + '</span></div>'; });
