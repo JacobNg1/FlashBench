@@ -1,11 +1,11 @@
 {
-  "name": "Chloe的工作台",
-  "short_name": "Chloe工作台",
-  "description": "宝月小学 Chloe老师的全流程教学工作台",
+  "name": "超能工作台",
+  "short_name": "超能工作台",
+  "description": "面向教师的一站式教学工作台",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#d4f5e9",
-  "theme_color": "#064e3b",
+  "background_color": "#f7f6ff",
+  "theme_color": "#695cff",
   "orientation": "portrait-primary",
   "lang": "zh-CN",
   "icons": [

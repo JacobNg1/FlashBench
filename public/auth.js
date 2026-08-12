@@ -1,5 +1,5 @@
 /* ============================================================
- * Chloe的超能工作台 - 认证模块
+ * 超能工作台 - 认证模块
  * 注册 / 登录 / JWT 管理
  * ============================================================ */
 
@@ -88,8 +88,8 @@ function showAuthModal(mode = 'login') {
   const html = `
     <div id="auth-modal" class="auth-overlay">
       <div class="auth-card">
-        <div class="auth-icon">🌸</div>
-        <h2>Chloe 的超能工作台</h2>
+        <div class="auth-icon"><img src="icon-192.png" alt=""></div>
+        <h2>${I18n.t('app.name')}</h2>
         <p class="auth-subtitle">${isLogin ? '登录后继续工作吧 ✨' : '创建一个新账号 🌱'}</p>
         <form id="auth-form" class="auth-form">
           <div class="form-group">
@@ -120,7 +120,7 @@ function showAuthModal(mode = 'login') {
 
   if (forgotLink) forgotLink.onclick = (event) => {
     event.preventDefault();
-    document.getElementById('auth-forgot-tip').textContent = '忘记密码请联系 jacob_ng@163.com';
+    document.getElementById('auth-forgot-tip').innerHTML = '忘记密码请联系 <a href="mailto:wjj_gene@163.com">wjj_gene@163.com</a>';
   };
 
   switchLink.onclick = (event) => {
