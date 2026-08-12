@@ -1,3 +1,13 @@
+#topbar { position:relative; overflow:visible; }
+.class-selector { background:var(--primary-bg);border-color:color-mix(in srgb,var(--primary) 32%,var(--border));color:var(--primary-dark); }
+.class-selector svg,.class-selector .class-name { color:var(--primary-dark); }
+.class-dropdown-panel { left:0!important;right:0!important;top:calc(100% - 1px)!important;width:100%!important;min-width:0!important;margin:0!important;padding:16px 20px 20px;border-radius:0 0 var(--radius-md) var(--radius-md)!important;overflow:visible!important; }
+.class-dropdown-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
+.class-option-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px; }
+.class-option { display:flex;align-items:center;gap:8px;min-height:44px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text-primary);cursor:pointer;text-align:left; }
+.class-option:hover { border-color:var(--primary);background:var(--primary-bg); }.class-option.active{border-color:var(--primary);background:var(--primary-bg);color:var(--primary-dark);box-shadow:0 0 0 2px var(--focus-ring)}.class-option span{flex:1;font-weight:600}.class-option svg{color:var(--primary)}
+.class-manager-modal { max-width:min(980px,calc(100vw - 40px)); }.class-teacher-modal{max-width:min(920px,calc(100vw - 40px))}.class-manager-modal .modal-body,.class-teacher-modal .modal-body{padding:22px 24px}.class-create-row{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:12px;margin-bottom:18px}.class-create-row .form-group{margin-bottom:0}.class-teacher-cell{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:240px}.table-link{border:0;background:transparent;color:var(--primary);font:inherit;font-weight:650;cursor:pointer;padding:4px}.table-link:hover{text-decoration:underline}.teacher-editor-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}.form-hint{margin-top:6px;color:var(--text-tertiary);font-size:12px}
+.sidebar-logo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
 .class-manage-button { flex:none; }
 .account-menu { right:0 !important; left:auto !important; top:44px !important; min-width:190px; }
 .account-menu-separator { border-top:1px solid var(--border-light); margin:4px 0; }
@@ -27,3 +37,4 @@
   .class-manage-button::after { content:'管理'; font-size:12px; }
   .management-check-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+@media(max-width:700px){.class-dropdown-panel{padding:12px!important}.class-option-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.class-create-row{grid-template-columns:1fr 1fr}.class-create-row .btn{grid-column:1/-1}.class-manager-modal,.class-teacher-modal{max-width:calc(100vw - 20px)}.class-teacher-cell{min-width:190px}}

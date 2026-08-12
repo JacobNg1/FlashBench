@@ -14,6 +14,7 @@ function scheduleDayFromDate(value) {
 }
 function scheduleSubjectName(term, id) { return (scheduleEntity(term.subjects, id) || {}).name || '未配置科目'; }
 function scheduleTeacherName(term, id) { return (scheduleEntity(term.teachers, id) || {}).name || '未配置教师'; }
+function scheduleTeacherLabel(term, id) { const teacher=scheduleEntity(term.teachers,id);return teacher?teacher.name+(teacher.contact?' · '+teacher.contact:''):'未配置教师'; }
 function scheduleClassName(term, id) { return (scheduleEntity(term.classes, id) || {}).name || '未配置班级'; }
 function scheduleSlotLabel(term, id) {
   const slot = scheduleEntity(term.slots, id) || {};
@@ -248,7 +249,7 @@ function saveMasterClass() {
 function editMasterCell(classId, day, slotId) {
   const term = scheduleTerm(); const cell = (((term.masterSchedule.cells[classId] || {})[day] || {})[slotId]) || {};
   UI.modal(`编辑课程总表 · ${day}`, `<div class="form-row"><div class="form-group"><label class="form-label">科目</label><select class="form-select" id="master-cell-subject"><option value="">空闲</option>${term.subjects.map(x => `<option value="${esc(x.name)}" ${x.name===cell.subject?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
-    <div class="form-group"><label class="form-label">教师</label><select class="form-select" id="master-cell-teacher"><option value="">未填写</option>${term.teachers.map(x => `<option value="${esc(x.name)}" ${x.name===cell.teacher?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div></div>`, `<button class="btn btn-ghost" onclick="UI.closeModal()">取消</button><button class="btn btn-primary" onclick="saveMasterCell('${classId}','${day}','${slotId}')">保存</button>`);
+    <div class="form-group"><label class="form-label">教师</label><select class="form-select" id="master-cell-teacher"><option value="">未填写</option>${term.teachers.map(x => `<option value="${esc(x.name)}" ${x.name===cell.teacher?'selected':''}>${esc(x.name+(x.contact?' · '+x.contact:''))}</option>`).join('')}</select></div></div>`, `<button class="btn btn-ghost" onclick="UI.closeModal()">取消</button><button class="btn btn-primary" onclick="saveMasterCell('${classId}','${day}','${slotId}')">保存</button>`);
 }
 function saveMasterCell(classId, day, slotId) {
   const term = scheduleTerm(); const subject = document.getElementById('master-cell-subject').value; const teacher = document.getElementById('master-cell-teacher').value;
@@ -306,7 +307,7 @@ function adjustmentSelects(term,a) {
   <div class="form-row"><div class="form-group"><label class="form-label">生效/原课程日期</label><input class="form-input" type="date" id="adj-source-date" value="${a.sourceDate||a.effectiveDate||todayStr()}"></div><div class="form-group"><label class="form-label">目标日期</label><input class="form-input" type="date" id="adj-target-date" value="${a.targetDate||a.sourceDate||a.effectiveDate||todayStr()}"></div></div>
   <div class="form-section-label">原课程（补课时可忽略）</div><div class="form-row"><div class="form-group"><label class="form-label">班级</label><select class="form-select" id="adj-source-class">${classes}</select></div><div class="form-group"><label class="form-label">节次</label><select class="form-select" id="adj-source-slot">${slots}</select></div></div>
   <div class="form-section-label">目标安排（停课时可忽略）</div><div class="form-row"><div class="form-group"><label class="form-label">班级</label><select class="form-select" id="adj-target-class">${targetClasses}</select></div><div class="form-group"><label class="form-label">节次</label><select class="form-select" id="adj-target-slot">${targetSlots}</select></div></div>
-  <div class="form-row"><div class="form-group"><label class="form-label">补课科目</label><select class="form-select" id="adj-subject"><option value="">从原课程带出</option>${scheduleOption(term.subjects,a.subjectId)}</select></div><div class="form-group"><label class="form-label">补课教师</label><select class="form-select" id="adj-teacher"><option value="">从科任配置带出</option>${scheduleOption(term.teachers,a.teacherId)}</select></div></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">补课科目</label><select class="form-select" id="adj-subject"><option value="">从原课程带出</option>${scheduleOption(term.subjects,a.subjectId)}</select></div><div class="form-group"><label class="form-label">补课教师</label><select class="form-select" id="adj-teacher"><option value="">从科任配置带出</option>${scheduleOption(term.teachers,a.teacherId,x=>x.name+(x.contact?' · '+x.contact:''))}</select></div></div>
   <div class="form-group"><label class="form-label">原因/备注</label><input class="form-input" id="adj-reason" value="${esc(a.reason||'')}" placeholder="如：教研活动、临时补课"></div>`;
 }
 function openScheduleAdjustment(id) {

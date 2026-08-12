@@ -37,15 +37,31 @@
     '系统': 'System', '浅色': 'Light', '深色': 'Dark', '语言': 'Language', '主题': 'Theme', '随机配色': 'Random theme', '外观与语言': 'Appearance & language',
     '学校未设置': 'School not set', '尚未添加班级': 'No classes yet', '未选择班级': 'No class selected', '暂无任课班级': 'No teaching classes', '模块开发中...': 'Coming soon...',
     '平均分': 'Average', '及格率': 'Pass rate', '最高分': 'Highest', '最低分': 'Lowest', '待办事项': 'To-dos', '快捷操作': 'Quick actions', '今日安排': 'Today', '最近工作记录': 'Recent work', '暂无调课记录': 'No schedule changes',
-    '全部': 'All', '详情': 'Details', '类型': 'Type', '原因': 'Reason', '范围': 'Scope', '学期': 'Semester', '学校': 'School', '身份': 'Role', '顺序': 'Order', '未配置': 'Not configured', '新建学期': 'New semester'
+    '全部': 'All', '详情': 'Details', '类型': 'Type', '原因': 'Reason', '范围': 'Scope', '学期': 'Semester', '学校': 'School', '身份': 'Role', '顺序': 'Order', '未配置': 'Not configured', '新建学期': 'New semester',
+    '切换班级': 'Switch class', '添加任课班级': 'Add teaching class', '完成': 'Done', '返回班级管理': 'Back to classes', '下载模板': 'Download template', '导入教师配置': 'Import teacher setup', '导入表格': 'Import spreadsheet',
+    '班主任': 'Homeroom teacher', '科任教师': 'Subject teachers', '各班科任教师': 'Subject teachers by class', '各科科任教师': 'Subject teachers', '联系方式（可选）': 'Contact (optional)', '联系方式': 'Contact', '未填写': 'Not provided', '编辑教师': 'Edit teacher', '添加教师': 'Add teacher', '教师配置': 'Teacher setup', '教师信息已保存': 'Teacher saved', '班主任已保存': 'Homeroom teacher saved',
+    '年级': 'Grade', '班号': 'Class number', '学生姓名': 'Student name', '学生人数': 'Students', '任课班级': 'Teaching classes', '任教科目': 'Teaching subjects', '学校信息': 'School information', '学校名称': 'School name', '我的任教科目': 'My subjects', '教职生涯': 'Career history',
+    '课表管理': 'Schedule settings', '时间段': 'Time slots', '时间轴': 'Timeline', '当前学期': 'Current semester', '学期名称': 'Semester name', '开始日期': 'Start date', '结束日期': 'End date', '上课时间': 'Class time', '任课教师': 'Teacher', '补课教师': 'Teacher', '补课科目': 'Subject', '调整类型': 'Change type', '生效范围': 'Effective range', '目标日期': 'Target date', '目标安排': 'Target schedule', '原课程': 'Original lesson', '调课日志': 'Schedule change log', '记录调课': 'Add schedule change', '保存调课': 'Save change',
+    '新建默写': 'New dictation', '添加学生': 'Add student', '添加考试': 'Add exam', '布置作业': 'Assign homework', '添加记录': 'Add record', '添加待办': 'Add to-do', '新建教案': 'New lesson plan', '添加笔记': 'Add note', '批量导出': 'Export all', '导出全部数据': 'Export all data', '选择备份文件': 'Choose backup file', '重置为初始数据': 'Reset data',
+    '暂无作业': 'No homework', '暂无考试': 'No exams', '暂无成绩数据': 'No grade data', '暂无待办事项': 'No to-dos', '暂无谈话记录': 'No conversations', '暂无家访记录': 'No home visits', '暂无默写记录': 'No dictations', '暂无工作记录': 'No work records', '请先添加学生': 'Add students first', '请先添加考试': 'Add an exam first', '请先选择班级': 'Select a class first',
+    '平均分': 'Average score', '通过率': 'Pass rate', '提交率': 'Submission rate', '已交': 'Submitted', '未交': 'Missing', '已背': 'Passed', '未背': 'Not passed', '未登': 'Not recorded', '部分': 'Partial', '进行中': 'In progress', '已完成': 'Completed', '启用': 'Enabled', '停用': 'Disabled', '本人': 'Me', '账号固定': 'Account linked',
+    "今天": "Today", "上一周": "Previous week", "下一周": "Next week", "本周": "This week", "调课": "Schedule change", "调课管理": "Schedule changes", "编辑调课": "Edit schedule change", "移课": "Move", "互换": "Swap", "停课": "Cancel lesson", "补课": "Extra lesson", "生效中": "Active", "已取消": "Cancelled",
+    "课程": "Course", "课程名称": "Course name", "班级名称": "Class name", "班级/地点": "Class / location", "周几": "Day", "节次": "Period", "第几节": "Period", "查看班级": "View class", "配置班级": "Configure class", "点击选择课程": "Select course", "点击编辑": "Edit", "教师与本人": "Teachers and me", "设为本人": "Set as me", "尚未添加教师": "No teachers yet",
+    "标题": "Title", "内容": "Content", "优先级": "Priority", "紧急": "Urgent", "一般": "Normal", "高": "High", "中": "Medium", "低": "Low", "姓名": "Name", "性别": "Gender", "男": "Male", "女": "Female", "考试": "Exam", "分数": "Score", "说明": "Notes", "选填": "Optional", "知道了": "Got it"
   };
   const originals = typeof WeakMap === 'function' ? new WeakMap() : null;
   const normalizeLocale = value => value && value.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN';
   const interpolate = (value, params) => value.replace(/\{(\w+)\}/g, (_, key) => params[key] == null ? `{${key}}` : params[key]);
-  const translateText = value => {
+  const translateText = (value, parent) => {
     if (I18n.locale !== 'en-US' || !/[\u3400-\u9fff]/.test(value)) return value;
     const match = value.match(/^(\s*)(.*?)(\s*)$/s);
-    return match && english[match[2]] ? match[1] + english[match[2]] + match[3] : value;
+    if (!match) return value;
+    if (english[match[2]]) return match[1] + english[match[2]] + match[3];
+    const selector = 'button,label,th,dt,.module-title,.module-subtitle,.card-title,.nav-item,.nav-section-label,.modal-title,.schedule-notice,.empty-state,.form-section-label,.management-title,.appearance-label,.class-dropdown-head,.tab,.stat-label,.tk-section-title,.schedule-summary-row,.schedule-free,.status-pill';
+    if (!parent || !parent.closest || !parent.closest(selector)) return value;
+    let translated = match[2];
+    Object.keys(english).filter(key => key.length > 1).sort((a,b) => b.length - a.length).forEach(key => { translated = translated.split(key).join(english[key]); });
+    return match[1] + translated + match[3];
   };
   const translateTree = node => {
     if (!node || typeof document === 'undefined') return;
@@ -58,7 +74,7 @@
         if (!el.hasAttribute(attr)) return;
         const key = `attr:${attr}`;
         if (!el.dataset[key.replace(':', '')]) el.dataset[key.replace(':', '')] = el.getAttribute(attr);
-        el.setAttribute(attr, I18n.locale === 'en-US' ? translateText(el.dataset[key.replace(':', '')]) : el.dataset[key.replace(':', '')]);
+        el.setAttribute(attr, I18n.locale === 'en-US' ? translateText(el.dataset[key.replace(':', '')], el) : el.dataset[key.replace(':', '')]);
       }));
       elements.forEach(el => {
         if (el.tagName !== 'BUTTON' || el.textContent.trim() || !el.querySelector('svg')) return;
@@ -70,7 +86,7 @@
       if (textNode.parentElement && /^(SCRIPT|STYLE|TEXTAREA)$/.test(textNode.parentElement.tagName)) return;
       if (originals && !originals.has(textNode)) originals.set(textNode, textNode.nodeValue);
       const source = originals ? originals.get(textNode) : textNode.nodeValue;
-      textNode.nodeValue = I18n.locale === 'en-US' ? translateText(source) : source;
+      textNode.nodeValue = I18n.locale === 'en-US' ? translateText(source, textNode.parentElement) : source;
     });
   };
   const I18n = {
