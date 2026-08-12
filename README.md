@@ -185,7 +185,7 @@ FlashBench/
 
 提供“毛玻璃动态”和“纯色简约”两种主题风格，搭配九套配色；随机配色模式启用后，每次打开都会自动更换颜色。支持浅色、深色与跟随系统模式，界面可在中文和英文之间即时切换。
 
-外观资源集中在 `public/ui/`：`icons.js` 提供本地图标，`i18n.js` 负责语言与本地化，`workspace-header.js` 管理顶栏班级工作区，`appearance.js` 与 `theme.css` 负责主题。
+外观资源集中在 `public/ui/`：`icons.js` 提供本地图标，`i18n.js` 与 `localization-runtime.js` 负责单路径语言本地化，`workspace-header.js` 管理带动画的顶栏班级工作区，`appearance.js` 与 `theme.css` 负责主题。
 
 ---
 
