@@ -52,13 +52,13 @@
   const originals = typeof WeakMap === 'function' ? new WeakMap() : null;
   const normalizeLocale = value => value && value.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN';
   const interpolate = (value, params) => value.replace(/\{(\w+)\}/g, (_, key) => params[key] == null ? `{${key}}` : params[key]);
-  const translateText = (value, parent) => {
+  const translateText = (value, parent, force = false) => {
     if (I18n.locale !== 'en-US' || !/[\u3400-\u9fff]/.test(value)) return value;
     const match = value.match(/^(\s*)(.*?)(\s*)$/s);
     if (!match) return value;
     if (english[match[2]]) return match[1] + english[match[2]] + match[3];
     const selector = 'button,label,th,dt,.module-title,.module-subtitle,.card-title,.nav-item,.nav-section-label,.modal-title,.schedule-notice,.empty-state,.form-section-label,.management-title,.appearance-label,.class-dropdown-head,.tab,.stat-label,.tk-section-title,.schedule-summary-row,.schedule-free,.status-pill';
-    if (!parent || !parent.closest || !parent.closest(selector)) return value;
+    if (!force && (!parent || !parent.closest || !parent.closest(selector))) return value;
     let translated = match[2];
     Object.keys(english).filter(key => key.length > 1).sort((a,b) => b.length - a.length).forEach(key => { translated = translated.split(key).join(english[key]); });
     return match[1] + translated + match[3];
@@ -67,14 +67,14 @@
     if (!node || typeof document === 'undefined') return;
     const nodes = node.nodeType === 3 ? [node] : [];
     if (node.nodeType === 1 || node.nodeType === 9) {
-      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+      const walker = document.createTreeWalker(node, 4);
       while (walker.nextNode()) nodes.push(walker.currentNode);
       const elements = node.nodeType === 1 ? [node, ...node.querySelectorAll('*')] : [...node.querySelectorAll('*')];
       elements.forEach(el => ['title', 'aria-label', 'placeholder'].forEach(attr => {
         if (!el.hasAttribute(attr)) return;
         const key = `attr:${attr}`;
         if (!el.dataset[key.replace(':', '')]) el.dataset[key.replace(':', '')] = el.getAttribute(attr);
-        el.setAttribute(attr, I18n.locale === 'en-US' ? translateText(el.dataset[key.replace(':', '')], el) : el.dataset[key.replace(':', '')]);
+        el.setAttribute(attr, I18n.locale === 'en-US' ? translateText(el.dataset[key.replace(':', '')], el, true) : el.dataset[key.replace(':', '')]);
       }));
       elements.forEach(el => {
         if (el.tagName !== 'BUTTON' || el.textContent.trim() || !el.querySelector('svg')) return;
@@ -112,6 +112,9 @@
       return this.locale;
     },
     formatDate(value, options) { return new Intl.DateTimeFormat(this.locale, options).format(value); },
+    formatTime(value) { return new Intl.DateTimeFormat(this.locale, { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(value); },
+    formatNumber(value, options) { return new Intl.NumberFormat(this.locale, options).format(value); },
+    translateText(value, parent) { return translateText(value, parent, true); },
     translate(rootNode) { translateTree(rootNode || document.body); }
   };
   if (typeof localStorage !== 'undefined') I18n.locale = normalizeLocale(localStorage.getItem(I18n.STORAGE_KEY));

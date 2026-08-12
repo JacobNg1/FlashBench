@@ -7,6 +7,8 @@ assert.equal(I18n.t('test.hello', { name: 'Gene' }), '你好，Gene');
 I18n.setLocale('en');
 assert.equal(I18n.locale, 'en-US');
 assert.equal(I18n.t('app.name'), 'Power Workspace');
+assert.equal(I18n.formatNumber(1234), '1,234');
+assert.match(I18n.formatDate(new Date('2026-08-12T00:00:00Z'), {year:'numeric'}), /2026/);
 assert.equal(I18n.t('test.hello', { name: 'Gene' }), '你好，Gene');
 I18n.setLocale('unknown');
 assert.equal(I18n.locale, 'zh-CN');

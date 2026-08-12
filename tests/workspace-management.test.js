@@ -62,7 +62,7 @@ test('新账号保持空班级并初始化学校科目和半年生涯',()=>{
   assert.equal(data.schoolProfile.careerRecords[0].status,'已完结');
 });
 
-test('课表管理只保留时间、教师和科任映射',()=>{
+test('课表管理只保留时间设置',()=>{
   const term=Core.newSemester('测试');
   term.classes=[{id:'a',name:'一年级（1）班',linkedClassId:'a',subjectTeachers:{}}];
   term.classSchedules={a:{}};
@@ -72,7 +72,8 @@ test('课表管理只保留时间、教师和科任映射',()=>{
   const html=ui.renderScheduleSettings(term);
   assert.match(html,/horizontal-timeline/);
   assert.match(html,/时间段/);
-  assert.match(html,/各班科任教师/);
+  assert.doesNotMatch(html,/各班科任教师/);
+  assert.doesNotMatch(html,/添加教师/);
   assert.doesNotMatch(html,/学期信息/);
   assert.doesNotMatch(html,/添加任课班级/);
   assert.doesNotMatch(html,/class="card-title">科目/);
