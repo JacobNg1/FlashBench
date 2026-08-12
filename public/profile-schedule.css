@@ -11,7 +11,8 @@
 .slot-timeline-tick { position:absolute; top:0; bottom:0; width:1px; height:auto; border:0; border-left:1px solid #dbe3ec; }
 .slot-timeline-tick.half { border-left-style:dashed; border-left-color:#e8edf3; }
 .slot-timeline-tick span { position:absolute; top:8px; left:-18px; width:40px; color:var(--text-tertiary); font-size:10px; text-align:center; }
-.slot-timeline-block { position:absolute; top:8px; right:auto; height:58px; min-width:12px; border:1px solid #6ee7b7; border-top:4px solid var(--primary); cursor:grab; }
+.slot-timeline-block { position:absolute; top:8px; right:auto; height:58px; min-width:12px; border:1px solid color-mix(in srgb,var(--slot-color) 52%,var(--border)); border-top:4px solid var(--slot-color); background:color-mix(in srgb,var(--slot-color) 10%,var(--surface-raised)); cursor:grab; }
+.slot-timeline-block .slot-timeline-content strong{color:color-mix(in srgb,var(--slot-color) 72%,var(--text-primary))}
 .slot-timeline-block.has-draft { border-color:#38bdf8; border-top-color:#0284c7; }
 .slot-timeline-content { min-width:0; flex-direction:column; justify-content:center; gap:1px; padding:4px 9px; text-align:center; }
 .slot-timeline-content strong,.slot-timeline-content span { max-width:100%; overflow:hidden; text-overflow:ellipsis; }

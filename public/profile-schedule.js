@@ -96,7 +96,7 @@
       const blockWidth = Math.max(12, scheduleTimelineLeft(range.end) - left);
       const changed = !!ScheduleEnhancements.slotDrafts[slot.id];
       return '<div class="slot-timeline-block ' + (changed ? 'has-draft' : '') + '" data-slot-id="' + slot.id +
-        '" style="left:' + left + 'px;width:' + blockWidth + 'px" onpointerdown="startScheduleTimelineDrag(event,\'' + slot.id + '\',\'move\')">' +
+        '" style="--slot-color:' + ScheduleCore.slotColor(slot) + ';left:' + left + 'px;width:' + blockWidth + 'px" onpointerdown="startScheduleTimelineDrag(event,\'' + slot.id + '\',\'move\')">' +
         '<button class="slot-resize-handle left" title="调整开始时间" onpointerdown="startScheduleTimelineDrag(event,\'' + slot.id + '\',\'start\')"></button>' +
         '<div class="slot-timeline-content"><strong>' + esc(slot.label) + '</strong><span>' + range.start + '–' + range.end + '</span></div>' +
         '<button class="slot-resize-handle right" title="调整结束时间" onpointerdown="startScheduleTimelineDrag(event,\'' + slot.id + '\',\'end\')"></button></div>';

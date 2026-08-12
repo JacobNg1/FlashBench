@@ -15,6 +15,7 @@
   }
   function open(event) {
     if(event) event.stopPropagation();
+    const account=document.getElementById('user-dropdown');if(account)account.classList.remove('show');
     if(document.getElementById('appearance-panel')) return close();
     const panel=document.createElement('section');
     panel.id='appearance-panel'; panel.className='appearance-panel'; panel.setAttribute('role','dialog');
@@ -32,6 +33,7 @@
     requestAnimationFrame(()=>panel.querySelector('button').focus());
   }
   window.toggleAppearancePanel=open;
+  window.closeAppearancePanel=close;
   window.refreshAppearancePanel=()=>{const panel=document.getElementById('appearance-panel');if(panel)render(panel);};
   document.addEventListener('appearancechange',()=>{const content=document.getElementById('content');if(window.App&&content&&content.childNodes.length)window.App.navigate(window.App.currentModule);window.refreshAppearancePanel();});
   document.addEventListener('localechange',window.refreshAppearancePanel);

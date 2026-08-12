@@ -49,6 +49,8 @@ test('旧课表班级自动汇入顶部唯一班级源',()=>{
 
 test('新账号保持空班级并初始化学校科目和半年生涯',()=>{
   const term=Core.newSemester('2026年上半年');
+  term.startDate=Core.addDays(Core.localDate(new Date()),-30);
+  term.endDate=Core.addDays(Core.localDate(new Date()),30);
   term.classes=[];
   const data={classes:[],currentClassId:null,scheduleWorkspace:{activeSemesterId:term.id,semesters:[term]}};
   const ui=load(data);
@@ -57,9 +59,36 @@ test('新账号保持空班级并初始化学校科目和半年生涯',()=>{
   assert.ok(data.schoolProfile.subjects.some(item=>item.name==='英语'));
   assert.equal(data.schoolProfile.careerRecords.length,1);
   assert.equal(data.schoolProfile.careerRecords[0].status,'任教中');
-  term.archived=true;
+  data.schoolProfile.careerRecords[0].endDate=Core.addDays(Core.localDate(new Date()),-1);
   ui.ensureWorkspaceManagementData(data);
   assert.equal(data.schoolProfile.careerRecords[0].status,'已完结');
+  assert.equal(data.schoolProfile.activeCareerId,'');
+});
+
+test('旧数据只保留一条覆盖今天的任教中生涯',()=>{
+  const today=Core.localDate(new Date());
+  const first=Core.newSemester('第一学期'),second=Core.newSemester('第二学期');
+  [first,second].forEach(term=>{term.startDate=Core.addDays(today,-20);term.endDate=Core.addDays(today,20);});
+  const data={classes:[],currentClassId:null,schoolProfile:{schoolName:'示范学校',subjects:[],teachingSubjectIds:[],careerRecords:[
+    {id:'career-a',semesterId:first.id,semesterName:first.name,startDate:first.startDate,endDate:first.endDate,status:'任教中'},
+    {id:'career-b',semesterId:second.id,semesterName:second.name,startDate:Core.addDays(today,-5),endDate:second.endDate,status:'任教中'}
+  ]},scheduleWorkspace:{activeSemesterId:first.id,semesters:[first,second]}};
+  const ui=load(data);ui.ensureWorkspaceManagementData(data);
+  assert.equal(data.schoolProfile.activeCareerId,'career-b');
+  assert.equal(data.schoolProfile.careerRecords.filter(item=>item.status==='任教中').length,1);
+  assert.equal(data.schoolProfile.careerRecords.find(item=>item.id==='career-a').status,'已完结');
+  assert.equal(data.scheduleWorkspace.selectedSemesterId,first.id);
+});
+
+test('中断生涯保持冻结状态且学期只读',()=>{
+  const term=Core.newSemester('异常学期');
+  const data={classes:[],currentClassId:null,schoolProfile:{subjects:[],teachingSubjectIds:[],careerRecords:[
+    {id:'career-stop',semesterId:term.id,semesterName:term.name,startDate:term.startDate,endDate:term.endDate,status:'中断'}
+  ]},scheduleWorkspace:{activeSemesterId:term.id,semesters:[term]}};
+  const ui=load(data);ui.ensureWorkspaceManagementData(data);
+  assert.equal(data.schoolProfile.careerRecords[0].status,'中断');
+  assert.equal(term.careerStatus,'中断');
+  assert.equal(ui.isSemesterReadOnly(term),true);
 });
 
 test('课表管理只保留时间设置',()=>{

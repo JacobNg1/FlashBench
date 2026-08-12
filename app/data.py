@@ -39,7 +39,7 @@ def create_empty_data() -> Dict[str, Any]:
         "classSwaps": [],
         "customKitQA": [],
         "examDates": {"midterm": "", "final": ""},
-        "schoolProfile": {"schoolName": "", "subjects": [], "teachingSubjectIds": [], "careerRecords": []},
+        "schoolProfile": {"schoolName": "", "subjects": [], "teachingSubjectIds": [], "careerRecords": [], "activeCareerId": ""},
         "scheduleWorkspace": None,
     }
 

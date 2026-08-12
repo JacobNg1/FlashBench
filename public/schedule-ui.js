@@ -34,6 +34,7 @@ function scheduleOption(items, selected, labelFn) {
 
 function setScheduleTab(tab) { M._tabs.schedule = tab; M.schedule(); }
 function setScheduleSemester(id) {
+  Store.data.scheduleWorkspace.selectedSemesterId = id;
   Store.data.scheduleWorkspace.activeSemesterId = id;
   ScheduleUI.classId = ''; ScheduleUI.masterClassId = ''; ScheduleUI.mappingClassId = '';
   scheduleSave(); M.schedule();
@@ -42,17 +43,14 @@ function moveScheduleWeek(delta) { ScheduleUI.weekStart = ScheduleCore.addDays(s
 function resetScheduleWeek() { ScheduleUI.weekStart = ScheduleCore.mondayOf(todayStr()); M.schedule(); }
 
 M.schedule = function() {
-  const ws = ScheduleCore.ensure(Store.data);
+  ScheduleCore.ensure(Store.data);
   const term = scheduleTerm();
   const tab = M._tabs.schedule || 'mine';
   const renderer = { mine: renderMySchedule, class: renderClassSchedule, master: renderMasterSchedule, swap: renderScheduleAdjustments, settings: renderScheduleSettings }[tab] || renderMySchedule;
   const needsSetup = !term.selfTeacherId || !term.classes.length || !term.slots.length;
   document.getElementById('content').innerHTML = `
     <div class="module-header schedule-module-header">
-      <div><div class="module-title">${ICON.schedule} 课表</div><div class="module-subtitle">按学期管理班级课表、个人安排与调课记录</div></div>
-      <div class="schedule-term-picker"><label>当前学期</label><select class="form-select" onchange="setScheduleSemester(this.value)">
-        ${ws.semesters.map(x => `<option value="${x.id}" ${x.id === term.id ? 'selected' : ''}>${esc(x.name)}${x.archived ? '（已归档）' : ''}</option>`).join('')}
-      </select></div>
+      <div><div class="module-title">${ICON.schedule} 课表</div><div class="module-subtitle">当前由顶栏全局学期控制：${esc(term.name)}</div></div>
     </div>
     ${needsSetup && tab !== 'settings' ? `<div class="schedule-notice">${ICON.info}<div><strong>请先完成课表配置</strong><span>设置本人教师、时间段和任课班级后，“我的课表”才能准确汇总。</span></div><button class="btn btn-primary btn-sm" onclick="setScheduleTab('settings')">前往设置</button></div>` : ''}
     ${tabBar([
@@ -74,18 +72,19 @@ function renderMySchedule(term) {
   items.forEach(x => { const key = `${x.date}:${x.slotId}`; if (!byCell.has(key)) byCell.set(key, []); byCell.get(key).push(x); });
   const enabledSlots = term.slots.filter(x => x.enabled !== false);
   const conflictCount = items.filter(x => x.conflict).length;
+  const today = todayStr();
   let table = `<div class="schedule-table-scroll"><table class="formal-schedule-table"><thead><tr><th class="slot-column">时间段</th>`;
   term.weekdays.forEach(day => {
     const date = ScheduleCore.dateForDay(week, day);
-    table += `<th>${day}<span>${date.slice(5)}</span></th>`;
+    table += `<th class="${date < today ? 'is-past-day' : ''}">${day}<span>${date.slice(5)}</span></th>`;
   });
   table += '</tr></thead><tbody>';
   enabledSlots.forEach(slot => {
-    table += `<tr><th class="slot-column"><strong>${esc(slot.label)}</strong><span>${esc(ScheduleCore.timeText(slot))}</span></th>`;
+    table += `<tr style="--slot-color:${ScheduleCore.slotColor(slot)}"><th class="slot-column"><i class="slot-color-dot"></i><strong>${esc(slot.label)}</strong><span>${esc(ScheduleCore.timeText(slot))}</span></th>`;
     term.weekdays.forEach(day => {
       const date = ScheduleCore.dateForDay(week, day);
       const cellItems = byCell.get(`${date}:${slot.id}`) || [];
-      table += `<td class="${cellItems.some(x => x.conflict) ? 'schedule-conflict-cell' : ''}">`;
+      table += `<td class="${date < today ? 'is-past-day ' : ''}${cellItems.some(x => x.conflict) ? 'schedule-conflict-cell' : ''}">`;
       if (!cellItems.length) table += '<span class="schedule-free">空闲</span>';
       cellItems.forEach(item => {
         const cls = scheduleEntity(term.classes, item.classId) || {};
@@ -116,7 +115,7 @@ function renderClassSchedule(term) {
   const data = term.classSchedules[cls.id] || {};
   let table = `<div class="schedule-table-scroll"><table class="formal-schedule-table editable-schedule"><thead><tr><th class="slot-column">时间段</th>${term.weekdays.map(d => `<th>${d}</th>`).join('')}</tr></thead><tbody>`;
   term.slots.filter(x => x.enabled !== false).forEach(slot => {
-    table += `<tr><th class="slot-column"><strong>${esc(slot.label)}</strong><span>${esc(ScheduleCore.timeText(slot))}</span></th>`;
+    table += `<tr style="--slot-color:${ScheduleCore.slotColor(slot)}"><th class="slot-column"><i class="slot-color-dot"></i><strong>${esc(slot.label)}</strong><span>${esc(ScheduleCore.timeText(slot))}</span></th>`;
     term.weekdays.forEach(day => {
       const cell = (data[day] || {})[slot.id];
       const teacherId = cell ? cls.subjectTeachers[cell.subjectId] : '';
@@ -226,7 +225,7 @@ function renderMasterSchedule(term) {
   const self = scheduleEntity(term.teachers, term.selfTeacherId);
   let table = `<div class="schedule-table-scroll"><table class="formal-schedule-table editable-schedule"><thead><tr><th class="slot-column">时间段</th>${term.weekdays.map(d => `<th>${d}</th>`).join('')}</tr></thead><tbody>`;
   term.slots.filter(x => x.enabled !== false).forEach(slot => {
-    table += `<tr><th class="slot-column"><strong>${esc(slot.label)}</strong><span>${esc(ScheduleCore.timeText(slot))}</span></th>`;
+    table += `<tr style="--slot-color:${ScheduleCore.slotColor(slot)}"><th class="slot-column"><i class="slot-color-dot"></i><strong>${esc(slot.label)}</strong><span>${esc(ScheduleCore.timeText(slot))}</span></th>`;
     term.weekdays.forEach(day => {
       const cell = (data[day] || {})[slot.id]; const isMine = cell && self && cell.teacher && ScheduleCore.normalizeName(cell.teacher) === ScheduleCore.normalizeName(self.name);
       table += `<td class="editable-cell ${isMine ? 'master-self-course' : ''}" onclick="editMasterCell('${cls.id}','${day}','${slot.id}')">${cell && cell.subject ? `<strong>${esc(cell.subject)}</strong><span>${esc(cell.teacher || '')}</span>` : '<span class="schedule-free">点击编辑</span>'}</td>`;

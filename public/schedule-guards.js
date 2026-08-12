@@ -10,8 +10,8 @@
     const original = window[name];
     if (typeof original !== 'function') return;
     window[name] = function (...args) {
-      if (scheduleTerm().archived) {
-        UI.toast('历史学期为只读状态；如需修改，请先在课表管理中取消归档。', 'warning');
+      if ((typeof isSemesterReadOnly === 'function' && isSemesterReadOnly(scheduleTerm())) || scheduleTerm().archived) {
+        UI.toast('历史学期为只读状态；请在生涯管理中设置任教中的生涯。', 'warning');
         return;
       }
       return original.apply(this, args);

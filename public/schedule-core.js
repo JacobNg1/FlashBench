@@ -14,6 +14,18 @@
     ['第三节', '10:25', '11:05'], ['第四节', '11:20', '12:00'],
     ['第五节', '14:15', '14:55'], ['第六节', '15:10', '15:50']
   ];
+  const SLOT_COLORS = { class:'#6366f1', rest:'#0ea5e9', activity:'#f59e0b' };
+
+  function inferSlotType(label) {
+    const value = String(label || '');
+    if (/午餐|午休|课间|休息/.test(value)) return 'rest';
+    if (/早读|操|晚托|活动|班会|值日/.test(value)) return 'activity';
+    return 'class';
+  }
+
+  function slotColor(slot) {
+    return slot.color || SLOT_COLORS[slot.type || inferSlotType(slot.label)] || SLOT_COLORS.class;
+  }
 
   const uid = (prefix) => prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const pad = n => String(n).padStart(2, '0');
@@ -47,7 +59,7 @@
       id: uid('term'), name: name || `${year}-${year + 1}学年 第一学期`,
       startDate: `${year}-09-01`, endDate: `${year + 1}-01-31`, archived: false,
       weekdays: DAY_LABELS.slice(0, 5),
-      slots: DEFAULT_SLOTS.map((s, i) => ({ id: `slot_${i + 1}`, label: s[0], start: s[1], end: s[2], enabled: true })),
+      slots: DEFAULT_SLOTS.map((s, i) => ({ id: `slot_${i + 1}`, label: s[0], start: s[1], end: s[2], enabled: true, type:'class', color:'' })),
       subjects: DEFAULT_SUBJECTS.map((name, i) => ({ id: `subject_${i + 1}`, name })),
       teachers: [], selfTeacherId: '', classes: [], classSchedules: {},
       masterSchedule: { classes: [], cells: {} }, adjustments: [], legacyAdjustments: []
@@ -57,18 +69,23 @@
   function ensure(data) {
     if (!data.scheduleWorkspace) {
       const term = newSemester();
-      data.scheduleWorkspace = { version: 1, activeSemesterId: term.id, semesters: [term] };
+      data.scheduleWorkspace = { version: 2, selectedSemesterId: term.id, activeSemesterId: term.id, semesters: [term] };
       migrateLegacy(data, term);
     }
     const ws = data.scheduleWorkspace;
     if (!Array.isArray(ws.semesters) || !ws.semesters.length) {
       const term = newSemester();
       ws.semesters = [term];
+      ws.selectedSemesterId = term.id;
       ws.activeSemesterId = term.id;
     }
     ws.semesters.forEach(term => {
       term.weekdays ||= DAY_LABELS.slice(0, 5);
       term.slots ||= [];
+      term.slots.forEach(slot => {
+        slot.type ||= inferSlotType(slot.label);
+        if (typeof slot.color !== 'string') slot.color = '';
+      });
       term.subjects ||= [];
       term.teachers ||= [];
       term.classes ||= [];
@@ -79,7 +96,10 @@
       term.adjustments ||= [];
       term.legacyAdjustments ||= [];
     });
-    if (!ws.semesters.some(x => x.id === ws.activeSemesterId)) ws.activeSemesterId = ws.semesters[0].id;
+    ws.version = 2;
+    ws.selectedSemesterId ||= ws.activeSemesterId;
+    if (!ws.semesters.some(x => x.id === ws.selectedSemesterId)) ws.selectedSemesterId = ws.semesters[0].id;
+    ws.activeSemesterId = ws.selectedSemesterId;
     return ws;
   }
 
@@ -171,7 +191,7 @@
 
   function activeSemester(data) {
     const ws = ensure(data);
-    return ws.semesters.find(x => x.id === ws.activeSemesterId) || ws.semesters[0];
+    return ws.semesters.find(x => x.id === ws.selectedSemesterId) || ws.semesters[0];
   }
   const subject = (term, id) => term.subjects.find(x => x.id === id);
   const teacher = (term, id) => term.teachers.find(x => x.id === id);
@@ -273,7 +293,7 @@
   }
 
   return {
-    DAY_LABELS, DEFAULT_SUBJECTS, DEFAULT_SLOTS, uid, localDate, parseDate, mondayOf, addDays,
+    DAY_LABELS, DEFAULT_SUBJECTS, DEFAULT_SLOTS, SLOT_COLORS, inferSlotType, slotColor, uid, localDate, parseDate, mondayOf, addDays,
     normalizeName, normalizeDay, timeText, newSemester, ensure, activeSemester, parseCourseText,
     subject, teacher, classItem, slotItem, dateForDay, getEffectiveSchedule, getMine, legacyMineRows
   };

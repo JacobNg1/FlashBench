@@ -16,6 +16,7 @@
     profile.subjects ||= [];
     profile.teachingSubjectIds ||= [];
     profile.careerRecords ||= [];
+    profile.activeCareerId ||= '';
     return profile;
   }
 
@@ -110,35 +111,117 @@
     return date.getFullYear() + '年' + (date.getMonth() < 6 ? '上半年' : '下半年');
   }
 
+  function todayValue() {
+    return ScheduleCore.localDate(new Date());
+  }
+
+  function careerTerm(data, record) {
+    const workspace = ScheduleCore.ensure(data);
+    return workspace.semesters.find(term => term.id === record.semesterId);
+  }
+
+  function syncCareerToTerm(data, record) {
+    const workspace = ScheduleCore.ensure(data);
+    let term = careerTerm(data, record);
+    if (!term) {
+      term = workspace.semesters.find(item => item.onboarding) || ScheduleCore.newSemester(record.semesterName || record.period);
+      if (!workspace.semesters.includes(term)) workspace.semesters.push(term);
+      delete term.onboarding;
+      record.semesterId = term.id;
+    }
+    term.name = record.semesterName || record.period;
+    term.startDate = record.startDate;
+    term.endDate = record.endDate;
+    term.archived = record.status !== '任教中';
+    term.careerStatus = record.status;
+    term.subjects = schoolData(data).subjects.map(item => ({...item}));
+    return term;
+  }
+
   function ensureCareerForTerm(data, term) {
+    if (term.onboarding) return null;
     const profile = schoolData(data);
-    let record = profile.careerRecords.find(item => item.semesterId === term.id);
+    let record = profile.careerRecords.find(item => item.semesterId === term.id)
+      || profile.careerRecords.find(item => !item.semesterId && item.startDate === term.startDate && item.endDate === term.endDate);
     const teachingNames = profile.subjects.filter(item => profile.teachingSubjectIds.includes(item.id)).map(item => item.name);
     if (!record) {
       record = {
-        id:itemId('career'), semesterId:term.id, period:careerPeriod(term),
+        id:itemId('career'), semesterId:term.id, period:careerPeriod(term), semesterName:term.name,
         schoolName:profile.schoolName, subjectNames:teachingNames,
         startDate:term.startDate, endDate:term.endDate,
         status:term.archived ? '已完结' : '任教中', note:''
       };
       profile.careerRecords.unshift(record);
     } else {
+      record.semesterId = term.id;
       record.period ||= careerPeriod(term);
-      record.startDate = term.startDate;
-      record.endDate = term.endDate;
-      record.status = term.archived ? '已完结' : '任教中';
+      record.semesterName ||= term.name || record.period;
+      record.startDate ||= term.startDate;
+      record.endDate ||= term.endDate;
+      record.status = ['任教中','已完结','中断'].includes(record.status) ? record.status : (term.archived ? '已完结' : '任教中');
     }
+    syncCareerToTerm(data, record);
+    return record;
+  }
+
+  function normalizeCareers(data) {
+    const profile = schoolData(data), workspace = ScheduleCore.ensure(data), today = todayValue();
+    workspace.semesters.forEach(term => ensureCareerForTerm(data,term));
+    profile.careerRecords.forEach(record => {
+      record.semesterName ||= record.period || careerPeriod({startDate:record.startDate});
+      record.period ||= record.semesterName;
+      record.subjectNames ||= [];
+      record.note ||= '';
+      if (!['任教中','已完结','中断'].includes(record.status)) record.status = '已完结';
+      if (record.status !== '中断' && record.endDate && record.endDate < today) record.status = '已完结';
+      syncCareerToTerm(data,record);
+    });
+    const active = profile.careerRecords
+      .filter(record => record.status === '任教中' && (!record.startDate || record.startDate <= today) && (!record.endDate || record.endDate >= today))
+      .sort((a,b) => String(b.startDate).localeCompare(String(a.startDate)));
+    active.slice(1).forEach(record => { record.status='已完结'; syncCareerToTerm(data,record); });
+    profile.careerRecords.filter(record => record.status === '任教中' && !active.includes(record)).forEach(record => {
+      record.status='已完结'; syncCareerToTerm(data,record);
+    });
+    profile.activeCareerId = active[0] ? active[0].id : '';
+    workspace.selectedSemesterId ||= workspace.activeSemesterId;
+    if (!workspace.semesters.some(term => term.id === workspace.selectedSemesterId)) {
+      const current = profile.careerRecords.find(record => record.id === profile.activeCareerId);
+      workspace.selectedSemesterId = current ? current.semesterId : (workspace.semesters[0] || {}).id || '';
+    }
+    workspace.activeSemesterId = workspace.selectedSemesterId;
+    return profile;
   }
 
   window.ensureWorkspaceManagementData = function (data) {
-    const before = JSON.stringify({classes:data.classes,schoolProfile:data.schoolProfile});
+    const before = JSON.stringify({classes:data.classes,schoolProfile:data.schoolProfile,scheduleWorkspace:data.scheduleWorkspace});
     ensureSchoolSubjects(data);
     ensureUnifiedClasses(data);
-    const workspace = data.scheduleWorkspace;
-    (workspace && workspace.semesters || []).forEach(term => ensureCareerForTerm(data,term));
+    normalizeCareers(data);
     if (typeof syncProfileTeacherAcrossTerms === 'function' && Auth.getUser()) syncProfileTeacherAcrossTerms(Auth.getUser());
-    if (JSON.stringify({classes:data.classes,schoolProfile:data.schoolProfile}) !== before && Store.data === data) Store.save();
+    if (JSON.stringify({classes:data.classes,schoolProfile:data.schoolProfile,scheduleWorkspace:data.scheduleWorkspace}) !== before && Store.data === data) Store.save();
     return data;
+  };
+
+  window.getActiveCareer = function (data = Store.data) {
+    const profile = normalizeCareers(data);
+    return profile.careerRecords.find(record => record.id === profile.activeCareerId) || null;
+  };
+
+  window.isSemesterReadOnly = function (term) {
+    const profile = schoolData();
+    const record = profile.careerRecords.find(item => item.semesterId === term.id);
+    return !record || record.status !== '任教中';
+  };
+
+  window.selectWorkspaceSemester = function (id) {
+    const workspace = ScheduleCore.ensure(Store.data);
+    if (!workspace.semesters.some(term => term.id === id)) return;
+    workspace.selectedSemesterId = id;
+    workspace.activeSemesterId = id;
+    ScheduleUI.classId=''; ScheduleUI.masterClassId=''; ScheduleUI.mappingClassId='';
+    Store.save(); renderTopbar();
+    if (App.currentModule === 'schedule') M.schedule();
   };
 
   window.scheduleTerm = function () {
@@ -212,11 +295,13 @@
 
   window.editManagedTeacher = function (classId, teacherId) {
     const {term} = activeClassConfig(classId), teacher = term.teachers.find(item => item.id === teacherId) || {};
+    if (isSemesterReadOnly(term)) return UI.toast('历史学期为只读状态','warning');
     UI.modal(teacherId ? '编辑教师' : '添加教师', '<div class="form-group"><label class="form-label">教师姓名</label><input class="form-input" id="managed-teacher-name" value="' + esc(teacher.name || '') + '" placeholder="如：吴老师"></div><div class="form-group"><label class="form-label">联系方式（可选）</label><input class="form-input" id="managed-teacher-contact" value="' + esc(teacher.contact || '') + '" placeholder="手机号、邮箱或办公电话"></div>', '<button class="btn btn-ghost" onclick="showClassTeacherEditor(\'' + classId + '\')">取消</button><button class="btn btn-primary" onclick="saveManagedTeacher(\'' + classId + '\',\'' + teacherId + '\')">保存</button>');
   };
 
   window.saveManagedTeacher = function (classId, teacherId) {
     const {term} = activeClassConfig(classId), name = document.getElementById('managed-teacher-name').value.trim(), contact = document.getElementById('managed-teacher-contact').value.trim();
+    if (isSemesterReadOnly(term)) return UI.toast('历史学期为只读状态','warning');
     if (!name) return UI.toast('请输入教师姓名','warning');
     let teacher = term.teachers.find(item => item.id === teacherId);
     if (!teacher) { teacher = {id:ScheduleCore.uid('teacher'),name,contact}; term.teachers.push(teacher); }
@@ -226,6 +311,7 @@
 
   window.saveManagedHomeroom = function (classId, teacherId) {
     const top = Store.data.classes.find(item => item.id === classId), config = activeClassConfig(classId), teacher = config.term.teachers.find(item => item.id === teacherId);
+    if (isSemesterReadOnly(config.term)) return UI.toast('历史学期为只读状态','warning');
     config.scheduleClass.homeroomTeacherId = teacherId;
     config.scheduleClass.homeroomTeacherName = teacher ? teacher.name : '';
     top.homeroomTeacherName = config.scheduleClass.homeroomTeacherName;
@@ -233,7 +319,8 @@
   };
 
   window.saveManagedSubjectTeacher = function (classId, subjectId, teacherId) {
-    const {scheduleClass} = activeClassConfig(classId);
+    const {term,scheduleClass} = activeClassConfig(classId);
+    if (isSemesterReadOnly(term)) return UI.toast('历史学期为只读状态','warning');
     scheduleClass.subjectTeachers[subjectId] = teacherId; scheduleSave();
   };
 
@@ -246,6 +333,7 @@
   }
 
   window.importTeacherConfiguration = function () {
+    if (isSemesterReadOnly(scheduleTerm())) return UI.toast('历史学期为只读状态','warning');
     importFromFile('', rows => {
       const term = scheduleTerm(); let count = 0;
       rows.forEach(row => {
@@ -329,14 +417,14 @@
       '<div class="dropdown-menu account-menu" id="user-dropdown">' +
       '<div class="dropdown-item" onclick="showProfile()">' + ICON.user + '<span>个人中心</span></div>' +
       '<div class="dropdown-item" onclick="showCareerManagement()">' + ICON.records + '<span>生涯管理</span></div>' +
-      '<div class="dropdown-item" onclick="showSemesterManagement()">' + ICON.schedule + '<span>学期信息</span></div>' +
       '<div class="dropdown-item" onclick="showSettings()">' + ICON.grid + '<span>数据管理</span></div>' +
       '<div class="account-menu-separator"></div><div class="dropdown-item" onclick="Auth.logout()">' + ICON.logout + '<span>退出登录</span></div></div></div>';
   };
 
   window.renderSidebar = function () {
-    const sb = document.getElementById('sidebar'), school = schoolData().schoolName;
-    let html = '<div class="sidebar-header"><div class="sidebar-logo"><img src="favicon.svg" alt=""></div><div><div class="sidebar-title">超能工作台</div><div class="sidebar-subtitle">' + esc(school || '学校未设置') + '</div></div></div><nav class="sidebar-nav">';
+    const sb = document.getElementById('sidebar'), active = getActiveCareer();
+    const subtitle = active ? [active.schoolName || '学校未设置', active.semesterName || active.period, '任教中'].filter(Boolean).join(' · ') : '请设置任教中的生涯';
+    let html = '<div class="sidebar-header"><div class="sidebar-logo"><img src="favicon.svg" alt=""></div><div><div class="sidebar-title">超能工作台</div><button type="button" class="sidebar-subtitle career-subtitle" onclick="showCareerManagement()">' + esc(subtitle) + '</button></div></div><nav class="sidebar-nav">';
     NAV.forEach(section => {
       html += '<div class="nav-section-label">' + section.section + '</div>';
       section.items.forEach(item => { html += '<div class="nav-item ' + (App.currentModule===item.id?'active':'') + '" data-module="' + item.id + '">' + ICON[item.icon] + '<span>' + item.label + '</span></div>'; });
@@ -345,6 +433,7 @@
     sb.querySelectorAll('.nav-item').forEach(element => {
       element.onclick = () => { App.navigate(element.dataset.module); if (window.innerWidth <= 768) closeSidebar(); };
     });
+    if (I18n.locale === 'en-US') I18n.translate(sb);
   };
 
   function subjectChecks(profile) {
@@ -360,15 +449,16 @@
   }
 
   window.showCareerManagement = function () {
-    const profile = schoolData();
-    const records = profile.careerRecords.map(item => '<tr onclick="editCareerRecord(\'' + item.id + '\')"><td><strong>' + esc(item.period) + '</strong><br><span class="text-sm text-muted">' + esc(item.schoolName || '学校未设置') + '</span></td><td>' + esc((item.subjectNames||[]).join('、') || '未设置') + '</td><td><span class="status-pill ' + (item.status==='任教中'?'success':'') + '">' + esc(item.status) + '</span></td></tr>').join('');
+    const profile = normalizeCareers(Store.data), active = getActiveCareer();
+    const records = profile.careerRecords.map(item => '<tr><td><strong>' + esc(item.semesterName || item.period) + '</strong><br><span class="text-sm text-muted">' + esc(item.startDate || '—') + ' 至 ' + esc(item.endDate || '—') + '</span><br><span class="text-sm text-muted">' + esc(item.schoolName || '学校未设置') + '</span></td><td>' + esc((item.subjectNames||[]).join('、') || '未设置') + '</td><td><span class="status-pill ' + (item.status==='任教中'?'success':item.status==='中断'?'warning':'muted') + '">' + esc(item.status) + '</span></td><td><button class="btn btn-outline btn-sm" onclick="editCareerRecord(\'' + item.id + '\')">' + (item.status==='中断'?'查看':'编辑') + '</button></td></tr>').join('');
     UI.modal('生涯管理',
+      (!active ? '<div class="schedule-notice warning">' + ICON.alert + '<div><strong>请设置任教中的生涯</strong><span>工作台仍可使用，但当前学期与侧栏信息将在设置后才能正常联动。</span></div></div>' : '') +
       '<div class="management-section"><div class="management-title">学校信息</div><div class="form-group"><label class="form-label">学校名称</label><input class="form-input" id="career-school-name" value="' + esc(profile.schoolName) + '" placeholder="未设置时左上角显示“学校未设置”"></div>' +
       '<label class="form-label">学校开设科目</label><div class="management-check-grid">' + subjectChecks(profile) + '</div><div class="form-group mt-3"><label class="form-label">其他科目（用顿号分隔）</label><input class="form-input" id="career-custom-subjects" placeholder="如：书法、心理健康"></div></div>' +
       '<div class="management-section"><div class="management-title">我的任教科目</div><p class="text-sm text-muted mb-2">可多选；这些科目会默认把本人设为各任课班级的科任教师。</p><div class="management-check-grid" id="teaching-subject-list">' + teachingChecks(profile) + '</div></div>' +
       '<button class="btn btn-primary mb-4" onclick="saveSchoolCareerSettings()">保存学校与科目</button>' +
       '<div class="management-section"><div class="management-title">教职生涯 <button class="btn btn-outline btn-sm" onclick="editCareerRecord()">' + ICON.plus + ' 添加经历</button></div>' +
-      (records?'<div class="table-wrap"><table class="data-table career-table"><thead><tr><th>时期与学校</th><th>任教科目</th><th>状态</th></tr></thead><tbody>'+records+'</tbody></table></div>':UI.empty(ICON.records,'创建学期后会自动生成一条任教中记录')) + '</div>',
+      (records?'<div class="table-wrap"><table class="data-table career-table"><thead><tr><th>学期与学校</th><th>任教科目</th><th>状态</th><th>操作</th></tr></thead><tbody>'+records+'</tbody></table></div>':UI.empty(ICON.records,'请添加一段教职生涯')) + '</div>',
       '<button class="btn btn-primary" onclick="UI.closeModal()">完成</button>');
   };
 
@@ -390,7 +480,8 @@
       term.subjects = profile.subjects.map(item=>({...item}));
       const selfId = term.selfTeacherId;
       term.classes.forEach(cls => profile.teachingSubjectIds.forEach(id => { if (!cls.subjectTeachers[id]) cls.subjectTeachers[id] = selfId; }));
-      ensureCareerForTerm(Store.data,term);
+      const record = profile.careerRecords.find(item => item.semesterId === term.id);
+      if (record) syncCareerToTerm(Store.data,record);
     });
     profile.careerRecords.filter(item=>item.status==='任教中').forEach(item => {
       item.schoolName = profile.schoolName;
@@ -401,49 +492,72 @@
 
   window.editCareerRecord = function (id) {
     const profile = schoolData(), record = profile.careerRecords.find(item=>item.id===id) || {};
+    const frozen = record.status === '中断', disabled = frozen ? ' disabled' : '';
+    const status = record.status || (profile.activeCareerId ? '已完结' : '任教中');
+    if (frozen) {
+      UI.modal('中断的教职经历',
+        '<div class="schedule-notice warning">' + ICON.alert + '<div><strong>中断记录已冻结</strong><span>该记录仅用于保留生涯异常，不能再次编辑。</span></div></div>' +
+        '<dl class="schedule-meta"><div><dt>学期</dt><dd>' + esc(record.semesterName || record.period) + '</dd></div><div><dt>时间段</dt><dd>' + esc(record.startDate) + ' 至 ' + esc(record.endDate) + '</dd></div><div><dt>学校</dt><dd>' + esc(record.schoolName || '未设置') + '</dd></div><div><dt>任教科目</dt><dd>' + esc((record.subjectNames||[]).join('、') || '未设置') + '</dd></div><div><dt>备注</dt><dd>' + esc(record.note || '未填写') + '</dd></div></dl>',
+        '<button class="btn btn-ghost" onclick="UI.closeModal();showCareerManagement()">返回</button><button class="btn btn-danger" onclick="deleteCareerRecord(\'' + id + '\')">删除记录</button>');
+      return;
+    }
     UI.modal(id?'编辑教职经历':'添加教职经历',
-      '<div class="form-row"><div class="form-group"><label class="form-label">时期（半年）</label><input class="form-input" id="career-period" value="' + esc(record.period||'') + '" placeholder="如：2026年上半年"></div><div class="form-group"><label class="form-label">状态</label><select class="form-select" id="career-status"><option ' + (record.status!=='已完结'?'selected':'') + '>任教中</option><option ' + (record.status==='已完结'?'selected':'') + '>已完结</option></select></div></div>' +
-      '<div class="form-group"><label class="form-label">学校</label><input class="form-input" id="career-record-school" value="' + esc(record.schoolName||profile.schoolName) + '"></div>' +
-      '<div class="form-row"><div class="form-group"><label class="form-label">开始日期</label><input class="form-input" type="date" id="career-start" value="' + esc(record.startDate||'') + '"></div><div class="form-group"><label class="form-label">结束日期</label><input class="form-input" type="date" id="career-end" value="' + esc(record.endDate||'') + '"></div></div>' +
-      '<div class="form-group"><label class="form-label">任教科目</label><input class="form-input" id="career-subjects" value="' + esc((record.subjectNames||[]).join('、')) + '" placeholder="用顿号分隔"></div><div class="form-group"><label class="form-label">备注</label><textarea class="form-textarea" id="career-note">' + esc(record.note||'') + '</textarea></div>',
-      '<button class="btn btn-ghost" onclick="UI.closeModal();showCareerManagement()">取消</button><button class="btn btn-primary" onclick="saveCareerRecord(\'' + (id||'') + '\')">保存</button>');
+      '<div class="form-row"><div class="form-group"><label class="form-label">学期名称</label><input class="form-input" id="career-semester-name" value="' + esc(record.semesterName||record.period||'') + '" placeholder="如：2026—2027学年第一学期"' + disabled + '></div><div class="form-group"><label class="form-label">状态</label><select class="form-select" id="career-status"' + disabled + '><option ' + (status==='任教中'?'selected':'') + '>任教中</option><option ' + (status==='已完结'?'selected':'') + '>已完结</option><option ' + (status==='中断'?'selected':'') + '>中断</option></select></div></div>' +
+      '<div class="form-group"><label class="form-label">学校</label><input class="form-input" id="career-record-school" value="' + esc(record.schoolName||profile.schoolName) + '"' + disabled + '></div>' +
+      '<div class="form-row"><div class="form-group"><label class="form-label">开始日期</label><input class="form-input" type="date" id="career-start" value="' + esc(record.startDate||'') + '"' + disabled + '></div><div class="form-group"><label class="form-label">结束日期</label><input class="form-input" type="date" id="career-end" value="' + esc(record.endDate||'') + '"' + disabled + '></div></div>' +
+      '<div class="form-group"><label class="form-label">任教科目</label><input class="form-input" id="career-subjects" value="' + esc((record.subjectNames||[]).join('、')) + '" placeholder="用顿号分隔"' + disabled + '></div><div class="form-group"><label class="form-label">备注</label><textarea class="form-textarea" id="career-note"' + disabled + '>' + esc(record.note||'') + '</textarea></div>' +
+      '<p class="form-hint">学期信息由本记录生成；任教中必须覆盖今天，且全局只能有一条。</p>',
+      '<button class="btn btn-ghost" onclick="UI.closeModal();showCareerManagement()">取消</button>' + (id?'<button class="btn btn-danger" onclick="deleteCareerRecord(\'' + id + '\')">删除</button>':'') + '<button class="btn btn-primary" onclick="saveCareerRecord(\'' + (id||'') + '\')">保存</button>');
   };
 
   window.saveCareerRecord = function (id) {
-    const profile=schoolData(), period=document.getElementById('career-period').value.trim();
-    if (!/^\d{4}年[上下]半年$/.test(period)) return UI.toast('时期格式应为“2026年上半年”', 'warning');
-    const next={id:id||itemId('career'),period,status:document.getElementById('career-status').value,schoolName:document.getElementById('career-record-school').value.trim(),startDate:document.getElementById('career-start').value,endDate:document.getElementById('career-end').value,subjectNames:document.getElementById('career-subjects').value.split(/[、,，]/).map(x=>x.trim()).filter(Boolean),note:document.getElementById('career-note').value.trim()};
-    const index=profile.careerRecords.findIndex(item=>item.id===id);
-    if(index>=0)profile.careerRecords[index]={...profile.careerRecords[index],...next};else profile.careerRecords.unshift(next);
-    Store.save();UI.closeModal();showCareerManagement();
+    const profile=schoolData(), existing=profile.careerRecords.find(item=>item.id===id);
+    if (existing && existing.status === '中断') return UI.toast('中断记录已冻结，只能删除', 'warning');
+    const semesterName=document.getElementById('career-semester-name').value.trim(), startDate=document.getElementById('career-start').value, endDate=document.getElementById('career-end').value, status=document.getElementById('career-status').value;
+    if (!semesterName || !startDate || !endDate || startDate > endDate) return UI.toast('请填写有效的学期名称和时间段','warning');
+    const today=todayValue();
+    if (status==='任教中' && (startDate>today || endDate<today)) return UI.toast('任教中的时间段必须覆盖今天','warning');
+    const otherActive=profile.careerRecords.find(item=>item.id!==id && item.status==='任教中');
+    if (status==='任教中' && otherActive) return UI.toast('已有任教中的生涯，请先处理原记录','warning');
+    const next={id:id||itemId('career'),semesterId:existing&&existing.semesterId,semesterName,period:semesterName,status,schoolName:document.getElementById('career-record-school').value.trim(),startDate,endDate,subjectNames:document.getElementById('career-subjects').value.split(/[、,，]/).map(x=>x.trim()).filter(Boolean),note:document.getElementById('career-note').value.trim()};
+    const persist=()=>{
+      const index=profile.careerRecords.findIndex(item=>item.id===id);
+      if(index>=0)profile.careerRecords[index]={...profile.careerRecords[index],...next};else profile.careerRecords.unshift(next);
+      syncCareerToTerm(Store.data,index>=0?profile.careerRecords[index]:next);
+      normalizeCareers(Store.data);
+      const record=index>=0?profile.careerRecords[index]:next;
+      Store.data.scheduleWorkspace.selectedSemesterId=record.semesterId;
+      Store.data.scheduleWorkspace.activeSemesterId=record.semesterId;
+      Store.save();renderSidebar();renderTopbar();UI.closeModal();showCareerManagement();
+    };
+    if(status==='中断' && (!existing || existing.status!=='中断')) return UI.confirm('设为中断后，记录将永久冻结，只能删除。确定继续？',persist);
+    persist();
   };
 
-  window.showSemesterManagement = function () {
-    const workspace=ScheduleCore.ensure(Store.data), active=ScheduleCore.activeSemester(Store.data);
-    const rows=workspace.semesters.map(term=>'<tr><td><strong>'+esc(term.name)+'</strong><br><span class="text-sm text-muted">'+term.startDate+' 至 '+term.endDate+'</span></td><td><span class="status-pill '+(!term.archived?'success':'')+'">'+(term.archived?'已完结':'进行中')+'</span></td><td><button class="btn btn-outline btn-sm" onclick="setScheduleSemester(\''+term.id+'\');editScheduleSemester()">编辑</button></td></tr>').join('');
-    UI.modal('学期信息','<div class="schedule-notice muted">'+ICON.info+'<div><strong>学期与生涯自动关联</strong><span>创建学期会生成“任教中”经历，归档学期会将其标记为“已完结”。</span></div></div><button class="btn btn-primary mb-3" onclick="addScheduleSemester()">'+ICON.plus+' 新建学期</button><div class="table-wrap"><table class="data-table"><thead><tr><th>学期</th><th>状态</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>',
-      '<button class="btn btn-primary" onclick="UI.closeModal()">完成</button>');
+  window.deleteCareerRecord = function (id) {
+    const profile=schoolData(), record=profile.careerRecords.find(item=>item.id===id);
+    if(!record)return;
+    UI.confirm('删除后无法恢复，对应学期课表也会永久删除。确定删除“'+esc(record.semesterName||record.period)+'”？',()=>{
+      const workspace=ScheduleCore.ensure(Store.data);
+      profile.careerRecords=profile.careerRecords.filter(item=>item.id!==id);
+      workspace.semesters=workspace.semesters.filter(term=>term.id!==record.semesterId);
+      if(!workspace.semesters.length){
+        const onboarding=ScheduleCore.newSemester('请设置教职生涯');
+        onboarding.onboarding=true;onboarding.archived=true;workspace.semesters=[onboarding];
+      }
+      const active=profile.careerRecords.find(item=>item.status==='任教中');
+      workspace.selectedSemesterId=(active&&active.semesterId)||workspace.semesters[0].id;
+      workspace.activeSemesterId=workspace.selectedSemesterId;
+      normalizeCareers(Store.data);Store.save();renderSidebar();renderTopbar();UI.closeModal();showCareerManagement();
+    });
   };
 
-  window.addScheduleSemester = function () {
-    const workspace=Store.data.scheduleWorkspace, term=ScheduleCore.newSemester();
-    term.subjects=schoolData().subjects.map(item=>({...item}));
-    workspace.semesters.push(term);workspace.activeSemesterId=term.id;
-    ensureUnifiedClasses(Store.data);ensureCareerForTerm(Store.data,term);syncProfileTeacherAcrossTerms(Auth.getUser());
-    Store.save();UI.closeModal();editScheduleSemester();
-  };
-
-  window.saveScheduleSemester = function () {
-    const term=scheduleTerm(),name=document.getElementById('term-name').value.trim(),start=document.getElementById('term-start').value,end=document.getElementById('term-end').value;
-    if(!name||!start||!end||start>end)return UI.toast('请填写有效的学期名称和日期','warning');
-    Object.assign(term,{name,startDate:start,endDate:end,archived:document.getElementById('term-archived').checked});
-    ensureCareerForTerm(Store.data,term);scheduleSave('学期信息已保存');UI.closeModal();
-    if(App.currentModule==='schedule')M.schedule();else showSemesterManagement();
-  };
+  window.showSemesterManagement = window.showCareerManagement;
 
   window.renderScheduleSettings = function (term) {
-    const slotRows=term.slots.map((item,index)=>'<tr><td>'+(index+1)+'</td><td><strong>'+esc(item.label)+'</strong></td><td>'+esc(ScheduleCore.timeText(item))+'</td><td>'+(item.enabled===false?'停用':'启用')+'</td><td><button class="btn btn-outline btn-sm" onclick="editScheduleSlot(\''+item.id+'\')">编辑</button></td></tr>').join('');
-    return '<div class="settings-grid">'+renderScheduleTimeline(term)+'</div><div class="settings-grid"><section class="card schedule-settings-card wide"><div class="card-title">时间段 <button class="btn btn-outline btn-sm" onclick="editScheduleSlot()">'+ICON.plus+' 添加</button></div><div class="table-wrap"><table class="data-table"><thead><tr><th>顺序</th><th>名称</th><th>时间</th><th>状态</th><th></th></tr></thead><tbody>'+slotRows+'</tbody></table></div></section></div>';
+    const typeNames={class:'上课时间',rest:'休息时间',activity:'活动时间'};
+    const slotRows=term.slots.map((item,index)=>'<tr><td>'+(index+1)+'</td><td><span class="slot-color-swatch" style="--slot-color:'+ScheduleCore.slotColor(item)+'"></span><strong>'+esc(item.label)+'</strong></td><td>'+esc(typeNames[item.type]||typeNames.class)+'</td><td>'+esc(ScheduleCore.timeText(item))+'</td><td>'+(item.enabled===false?'停用':'启用')+'</td><td><button class="btn btn-outline btn-sm" onclick="editScheduleSlot(\''+item.id+'\')">编辑</button></td></tr>').join('');
+    return '<div class="settings-grid">'+renderScheduleTimeline(term)+'</div><div class="settings-grid"><section class="card schedule-settings-card wide"><div class="card-title">时间段 <button class="btn btn-outline btn-sm" onclick="editScheduleSlot()">'+ICON.plus+' 添加</button></div><div class="table-wrap"><table class="data-table"><thead><tr><th>顺序</th><th>名称</th><th>类型</th><th>时间</th><th>状态</th><th></th></tr></thead><tbody>'+slotRows+'</tbody></table></div></section></div>';
   };
 
   App.navigate = function (moduleId) {

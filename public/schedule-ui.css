@@ -26,9 +26,15 @@
 .formal-schedule-table thead th { position:sticky; top:0; z-index:2; height:auto; padding:10px; text-align:center; background:#f8fafc; color:var(--text-primary); font-size:13px; }
 .formal-schedule-table thead th span,.formal-schedule-table .slot-column span { display:block; margin-top:3px; font-size:10px; font-weight:400; color:var(--text-tertiary); }
 .formal-schedule-table .slot-column { width:108px; background:#f8fafc; text-align:center; vertical-align:middle; color:var(--text-secondary); }
+.slot-color-dot,.slot-color-swatch{display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:50%;background:var(--slot-color);box-shadow:0 0 0 3px color-mix(in srgb,var(--slot-color) 14%,transparent)}
+.slot-color-swatch{width:12px;height:12px;vertical-align:-1px}
 .formal-schedule-table td { background:#fff; }
+.formal-schedule-table tbody tr>td{border-top:3px solid color-mix(in srgb,var(--slot-color) 26%,transparent)}
+.formal-schedule-table .is-past-day{background:color-mix(in srgb,var(--surface-muted) 86%,#d1d5db)!important;color:var(--text-tertiary)}
+.formal-schedule-table td.is-past-day .my-course{filter:grayscale(.72);opacity:.62;box-shadow:none}
 .schedule-free { display:flex; min-height:56px; align-items:center; justify-content:center; color:#c0c7d0; font-size:11px; font-weight:400; }
 .my-course { padding:8px; border:1px solid #dbe4ee; border-left:3px solid #94a3b8; border-radius:6px; background:#fff; margin-bottom:5px; }
+.formal-schedule-table tbody .my-course{border-left-color:var(--slot-color);background:color-mix(in srgb,var(--slot-color) 7%,var(--surface-raised))}
 .my-course:last-child { margin-bottom:0; }
 .my-course.is-current-class { border-color:#6ee7b7; border-left-color:var(--primary); background:#ecfdf5; }
 .my-course-subject { font-size:13px; font-weight:700; color:var(--text-primary); }
@@ -38,6 +44,9 @@
 .schedule-conflict { margin-top:4px; color:#c2410c; font-size:10px; font-weight:700; }
 .editable-cell { cursor:pointer; text-align:center !important; vertical-align:middle !important; transition:background .15s; }
 .editable-cell:hover { background:#f0fdf4; }
+.slot-color-control{display:flex;align-items:center;gap:12px;min-height:38px}.slot-color-control input[type="color"]{width:46px;height:34px;padding:2px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.schedule-readonly .editable-cell,.schedule-readonly .my-course,.schedule-readonly .slot-timeline-block,.schedule-readonly .slot-resize-handle{pointer-events:none;cursor:default}
+.schedule-readonly .schedule-settings-card button{pointer-events:none;opacity:.45}
 .editable-cell strong,.editable-cell span:not(.schedule-free) { display:block; }
 .editable-cell strong { font-size:13px; color:var(--text-primary); }
 .editable-cell span:not(.schedule-free) { margin-top:4px; font-size:10px; color:var(--text-tertiary); }

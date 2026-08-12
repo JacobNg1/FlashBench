@@ -68,3 +68,14 @@ test('旧数据迁移保留班级课表、总表和旧调课备注', () => {
   assert.equal(term.legacyAdjustments.length, 1);
   assert.equal(Object.keys(term.classSchedules[term.classes[0].id].周一).length, 1);
 });
+
+test('旧时间段自动归类并迁移全局学期选择',()=>{
+  const term=Core.newSemester('配色测试');
+  term.slots=[{id:'a',label:'午休',start:'12:00',end:'13:00',enabled:true},{id:'b',label:'第一节',start:'08:00',end:'08:40',enabled:true}];
+  const data={scheduleWorkspace:{activeSemesterId:term.id,semesters:[term]}};
+  const workspace=Core.ensure(data);
+  assert.equal(workspace.selectedSemesterId,term.id);
+  assert.equal(term.slots[0].type,'rest');
+  assert.equal(term.slots[1].type,'class');
+  assert.equal(Core.slotColor(term.slots[0]),Core.SLOT_COLORS.rest);
+});

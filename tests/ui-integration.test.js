@@ -57,3 +57,21 @@ test('工作台继续使用网页图标并保留教师导入',()=>{
   assert.match(workspace,/importTeacherConfiguration/);
   assert.match(workspace,/教师配置模板\.csv/);
 });
+
+test('顶栏使用全局学期控件且账户菜单与外观面板互斥',()=>{
+  assert.match(header,/class="semester-selector"/);
+  assert.match(header,/selectWorkspaceSemester/);
+  assert.doesNotMatch(header,/showSemesterManagement\(\)/);
+  assert.match(controls,/account\.classList\.remove\('show'\)/);
+  assert.match(fs.readFileSync('public/app.js','utf8'),/closeAppearancePanel\(\)/);
+  assert.match(theme,/\.account-menu\{background:linear-gradient/);
+});
+
+test('课表提供主题滚动条、时段配色和过去日期状态',()=>{
+  const schedule=fs.readFileSync('public/schedule-ui.js','utf8');
+  const scheduleCss=fs.readFileSync('public/schedule-ui.css','utf8');
+  assert.match(theme,/scrollbar-color:var\(--scrollbar-thumb\)/);
+  assert.match(schedule,/ScheduleCore\.slotColor\(slot\)/);
+  assert.match(schedule,/date < today \? 'is-past-day'/);
+  assert.match(scheduleCss,/\.formal-schedule-table \.is-past-day/);
+});

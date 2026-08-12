@@ -9,11 +9,11 @@ const ScheduleEnhancements = {
 };
 
 const COMMON_SCHEDULE_SLOTS = [
-  { label:'早读', start:'07:50', end:'08:10' },
-  { label:'课间操', start:'09:55', end:'10:20' },
-  { label:'午餐', start:'12:00', end:'12:30' },
-  { label:'午休', start:'12:30', end:'14:00' },
-  { label:'晚托', start:'16:00', end:'17:00' }
+  { label:'早读', start:'07:50', end:'08:10', type:'activity', color:'' },
+  { label:'课间操', start:'09:55', end:'10:20', type:'activity', color:'' },
+  { label:'午餐', start:'12:00', end:'12:30', type:'rest', color:'' },
+  { label:'午休', start:'12:30', end:'14:00', type:'rest', color:'' },
+  { label:'晚托', start:'16:00', end:'17:00', type:'activity', color:'' }
 ];
 
 function scheduleMinutes(value) {
@@ -154,10 +154,18 @@ function discardScheduleTimelineChanges() { ScheduleEnhancements.slotDrafts = {}
 
 window.editScheduleSlot = function (id) {
   const term = scheduleTerm(), slot = scheduleEntity(term.slots, id) || {};
+  if (typeof isSemesterReadOnly === 'function' && isSemesterReadOnly(term)) return UI.toast('历史学期为只读状态', 'warning');
   const range = id ? scheduleSlotRange(term, slot) : { start:'', end:'' };
+  const type = slot.type || ScheduleCore.inferSlotType(slot.label), color = ScheduleCore.slotColor(slot);
   UI.modal(id ? '编辑时间段' : '添加时间段', `<div class="form-group"><label class="form-label">名称</label><input class="form-input" id="slot-name" value="${esc(slot.label || '')}" placeholder="如：早读、第一节、午休"></div>
     <div class="form-row"><div class="form-group"><label class="form-label">开始时间</label><input class="form-input" type="time" step="300" id="slot-start" value="${range.start || ''}"></div><div class="form-group"><label class="form-label">结束时间</label><input class="form-input" type="time" step="300" id="slot-end" value="${range.end || ''}"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">时间段类型</label><select class="form-select" id="slot-type" onchange="updateScheduleSlotColorDefault()"><option value="class" ${type==='class'?'selected':''}>上课时间</option><option value="rest" ${type==='rest'?'selected':''}>休息时间</option><option value="activity" ${type==='activity'?'selected':''}>活动时间</option></select></div><div class="form-group"><label class="form-label">显示颜色</label><div class="slot-color-control"><input type="color" id="slot-color" value="${color}"><label class="checkbox-label"><input type="checkbox" id="slot-custom-color" ${slot.color?'checked':''}> 自定义颜色</label></div></div></div>
     <label class="checkbox-label"><input type="checkbox" id="slot-enabled" ${slot.enabled === false ? '' : 'checked'}> 启用该时间段</label>`, `<button class="btn btn-ghost" onclick="UI.closeModal()">取消</button><button class="btn btn-primary" onclick="saveScheduleSlot('${id || ''}')">保存</button>`);
+};
+
+window.updateScheduleSlotColorDefault = function () {
+  const custom=document.getElementById('slot-custom-color'), picker=document.getElementById('slot-color'), type=document.getElementById('slot-type');
+  if(custom&&!custom.checked&&picker&&type)picker.value=ScheduleCore.SLOT_COLORS[type.value];
 };
 
 window.saveScheduleSlot = function (id) {
@@ -168,7 +176,9 @@ window.saveScheduleSlot = function (id) {
   if (!label || !document.getElementById('slot-start').value || !document.getElementById('slot-end').value) return UI.toast('请填写名称和完整时间', 'warning');
   if (scheduleMinutes(start) >= scheduleMinutes(end)) return UI.toast('结束时间必须晚于开始时间', 'warning');
   if (enabled) { const conflict = scheduleSlotConflict(term, id, start, end); if (conflict) return UI.toast(conflict, 'warning'); }
-  const next = { id:id || ScheduleCore.uid('slot'), label, start, end, enabled };
+  const type=document.getElementById('slot-type').value;
+  const color=document.getElementById('slot-custom-color').checked?document.getElementById('slot-color').value:'';
+  const next = { id:id || ScheduleCore.uid('slot'), label, start, end, enabled, type, color };
   const index = term.slots.findIndex(slot => slot.id === id);
   if (index >= 0) term.slots[index] = next; else term.slots.push(next);
   delete ScheduleEnhancements.slotDrafts[id];
@@ -247,10 +257,13 @@ function cancelAdjustmentLog(id) {
 }
 
 M.schedule = function () {
-  const ws = ScheduleCore.ensure(Store.data), term = scheduleTerm(), tab = M._tabs.schedule || 'mine';
+  ScheduleCore.ensure(Store.data);
+  const term = scheduleTerm(), tab = M._tabs.schedule || 'mine';
   const renderer = { mine:renderMySchedule, class:renderClassSchedule, master:renderMasterSchedule, settings:renderScheduleSettings }[tab] || renderMySchedule;
   const needsSetup = !term.selfTeacherId || !term.classes.length || !term.slots.length;
-  document.getElementById('content').innerHTML = `<div class="module-header schedule-module-header"><div><div class="module-title">${ICON.schedule} 课表</div><div class="module-subtitle">按学期管理班级课表、个人安排与调课记录</div></div><div class="schedule-term-picker"><label>当前学期</label><select class="form-select" onchange="setScheduleSemester(this.value)">${ws.semesters.map(item => `<option value="${item.id}" ${item.id === term.id ? 'selected' : ''}>${esc(item.name)}${item.archived ? '（已归档）' : ''}</option>`).join('')}</select></div></div>
+  const readOnly = typeof isSemesterReadOnly === 'function' && isSemesterReadOnly(term);
+  document.getElementById('content').innerHTML = `<div class="module-header schedule-module-header"><div><div class="module-title">${ICON.schedule} 课表</div><div class="module-subtitle">当前由顶栏全局学期控制：${esc(term.name)}</div></div></div>
+    ${readOnly ? `<div class="schedule-notice muted">${ICON.info}<div><strong>历史学期只读</strong><span>可查看和导出记录；如需新的可编辑学期，请在生涯管理中设置任教中的生涯。</span></div></div>` : ''}
     ${needsSetup && tab !== 'settings' ? `<div class="schedule-notice">${ICON.info}<div><strong>请先完成课表配置</strong><span>设置本人教师、时间段和任课班级后，“我的课表”才能准确汇总。</span></div><button class="btn btn-primary btn-sm" onclick="setScheduleTab('settings')">前往设置</button></div>` : ''}
-    ${tabBar([{group:'schedule',id:'mine',label:'我的课表'},{group:'schedule',id:'class',label:'班级课表'},{group:'schedule',id:'master',label:'课程总表'},{group:'schedule',id:'settings',label:'课表管理'}],tab)}<div class="schedule-panel">${renderer(term)}</div>`;
+    ${tabBar([{group:'schedule',id:'mine',label:'我的课表'},{group:'schedule',id:'class',label:'班级课表'},{group:'schedule',id:'master',label:'课程总表'},{group:'schedule',id:'settings',label:'课表管理'}],tab)}<div class="schedule-panel ${readOnly?'schedule-readonly':''}">${renderer(term)}</div>`;
 };

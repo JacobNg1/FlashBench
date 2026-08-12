@@ -30,7 +30,7 @@ test('时间轴横向渲染并提供左右拖动手柄', () => {
   term.slots = [{id:'p1',label:'第一节',start:'08:00',end:'08:40',enabled:true}];
   const html = ui.renderScheduleTimeline(term);
   assert.match(html, /style="width:\d+px"/);
-  assert.match(html, /style="left:\d+px;width:\d+px"/);
+  assert.match(html, /style="--slot-color:#[0-9a-f]+;left:\d+px;width:\d+px"/);
   assert.match(html, /slot-resize-handle left/);
   assert.match(html, /slot-resize-handle right/);
   assert.doesNotMatch(html, /slot-resize-handle top/);

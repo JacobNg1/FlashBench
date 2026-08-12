@@ -5,7 +5,7 @@
 
 /* ===== 数据存储层 ===== */
 const Store = {
-  SCHEMA_VERSION: 7,
+  SCHEMA_VERSION: 8,
   data: null,
   saving: false,
   saveTimer: null,
@@ -111,7 +111,7 @@ function createEmptyData() {
     classSwaps: [],
     customKitQA: [],
     examDates: { midterm: '', final: '' },
-    schoolProfile: { schoolName: '', subjects: [], teachingSubjectIds: [], careerRecords: [] },
+    schoolProfile: { schoolName: '', subjects: [], teachingSubjectIds: [], careerRecords: [], activeCareerId: '' },
     scheduleWorkspace: null
   };
 }
@@ -291,6 +291,7 @@ function renderTopbar() {
       <div class="topbar-user" title="${esc(displayName)}">${esc(Array.from(displayName)[0] || '师')}</div>
       <div class="dropdown-menu" id="user-dropdown" style="right:0;left:auto;top:44px;">
         <div class="dropdown-item" onclick="showProfile()">${ICON.user}<span>个人中心</span></div>
+        <div class="dropdown-item" onclick="showCareerManagement()">${ICON.records}<span>生涯管理</span></div>
         <div style="border-top:1px solid var(--border-light);margin:4px 0"></div>
         <div class="dropdown-item" onclick="Auth.logout()">${ICON.logout}<span>退出登录</span></div>
       </div>
@@ -326,6 +327,7 @@ function showClassDropdown(e) {
 
 function showUserDropdown(e) {
   e.stopPropagation();
+  if (typeof closeAppearancePanel === 'function') closeAppearancePanel();
   document.getElementById('user-dropdown').classList.toggle('show');
   document.addEventListener('click', function handler() {
     const dd = document.getElementById('user-dropdown');
