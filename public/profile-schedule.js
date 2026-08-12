@@ -53,7 +53,7 @@
   };
 
   window.addScheduleTeacher = function () {
-    UI.modal('添加教师', '<div class="form-group"><label class="form-label">教师姓名</label><input class="form-input" id="teacher-name" placeholder="如：吴老师"></div>',
+    UI.modal('添加教师', '<div class="form-group"><label class="form-label">教师姓名</label><input class="form-input" id="teacher-name" placeholder="如：吴老师"></div><div class="form-group"><label class="form-label">联系方式（可选）</label><input class="form-input" id="teacher-contact" placeholder="手机号、邮箱或办公电话"></div>',
       '<button class="btn btn-ghost" onclick="UI.closeModal()">取消</button><button class="btn btn-primary" onclick="saveScheduleTeacher()">添加</button>');
   };
 
@@ -61,7 +61,7 @@
     const term = scheduleTerm(), name = document.getElementById('teacher-name').value.trim();
     if (!name) return UI.toast('请输入教师姓名', 'warning');
     if (term.teachers.some(item => item.name === name)) return UI.toast('该教师已存在', 'warning');
-    term.teachers.push({ id: ScheduleCore.uid('teacher'), name });
+    term.teachers.push({ id: ScheduleCore.uid('teacher'), name, contact:document.getElementById('teacher-contact').value.trim() });
     scheduleSave('教师已添加'); UI.closeModal(); M.schedule();
   };
 

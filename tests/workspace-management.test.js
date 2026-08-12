@@ -31,6 +31,7 @@ function load(data) {
 
 test('旧课表班级自动汇入顶部唯一班级源',()=>{
   const term=Core.newSemester('测试');
+  term.teachers=[{id:'teacher-a',name:'吴老师'}];
   term.classes=[
     {id:'schedule-a',name:'五年级（1）班',linkedClassId:'top-a',subjectTeachers:{}},
     {id:'schedule-b',name:'三年级（2）班',linkedClassId:'',subjectTeachers:{}}
@@ -41,6 +42,8 @@ test('旧课表班级自动汇入顶部唯一班级源',()=>{
   ui.ensureWorkspaceManagementData(data);
   assert.deepEqual(data.classes.map(x=>x.name).sort(),['三年级（2）班','五年级（1）班'].sort());
   assert.equal(term.classes.length,2);
+  assert.equal(term.teachers[0].contact, '');
+  assert.ok(term.classes.every(item=>'homeroomTeacherId' in item));
   assert.ok(term.classes.every(item=>data.classes.some(top=>top.id===(item.linkedClassId||item.id))));
 });
 

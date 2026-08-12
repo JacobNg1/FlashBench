@@ -66,7 +66,9 @@
   function ensureUnifiedClasses(data) {
     data.classes ||= [];
     const terms = (data.scheduleWorkspace && data.scheduleWorkspace.semesters) || [];
-    terms.forEach(term => (term.classes || []).forEach(scheduleClass => {
+    terms.forEach(term => {
+      (term.teachers || []).forEach(teacher => { teacher.contact ||= ''; });
+      (term.classes || []).forEach(scheduleClass => {
       let top = data.classes.find(item => item.id === scheduleClass.linkedClassId || item.id === scheduleClass.id)
         || data.classes.find(item => normalize(item.name) === normalize(scheduleClass.name));
       if (!top) {
@@ -75,19 +77,25 @@
       }
       scheduleClass.linkedClassId = top.id;
       scheduleClass.name = top.name;
-    }));
+      scheduleClass.homeroomTeacherId ||= '';
+      scheduleClass.homeroomTeacherName ||= top.homeroomTeacherName || '';
+      top.homeroomTeacherName ||= scheduleClass.homeroomTeacherName || '';
+      });
+    });
     terms.forEach(term => {
       data.classes.forEach(top => {
         let scheduleClass = term.classes.find(item => item.linkedClassId === top.id || item.id === top.id)
           || term.classes.find(item => normalize(item.name) === normalize(top.name));
         if (!scheduleClass) {
-          scheduleClass = { id:top.id, name:top.name, linkedClassId:top.id, subjectTeachers:{} };
+          scheduleClass = { id:top.id, name:top.name, linkedClassId:top.id, subjectTeachers:{}, homeroomTeacherId:'', homeroomTeacherName:top.homeroomTeacherName || '' };
           term.classes.push(scheduleClass);
           term.classSchedules[scheduleClass.id] ||= {};
         } else {
           scheduleClass.linkedClassId = top.id;
           scheduleClass.name = top.name;
           scheduleClass.subjectTeachers ||= {};
+          scheduleClass.homeroomTeacherId ||= '';
+          scheduleClass.homeroomTeacherName ||= top.homeroomTeacherName || '';
           term.classSchedules[scheduleClass.id] ||= {};
         }
       });
@@ -145,20 +153,116 @@
     return grade + '（' + number + '）班';
   }
 
+  function activeClassConfig(classId) {
+    const term = scheduleTerm();
+    return { term, scheduleClass:term.classes.find(item => (item.linkedClassId || item.id) === classId) };
+  }
+
+  function classTeacherSummary(item) {
+    const {term,scheduleClass} = activeClassConfig(item.id);
+    if (!scheduleClass) return '未配置';
+    const homeroom = term.teachers.find(teacher => teacher.id === scheduleClass.homeroomTeacherId);
+    const mapped = new Set(Object.values(scheduleClass.subjectTeachers || {}).filter(Boolean));
+    return (homeroom ? '班主任：' + homeroom.name : '未设置班主任') + ' · ' + mapped.size + ' 位科任教师';
+  }
+
   window.showClassManager = function () {
     const rows = Store.data.classes.map(item => {
       const count = ((Store.data.students || {})[item.id] || []).length;
-      return '<tr><td><strong>' + esc(item.name) + '</strong></td><td>' + count + ' 名学生</td><td><button class="btn btn-danger btn-sm" onclick="removeManagedClass(\'' + item.id + '\')">删除</button></td></tr>';
+      return '<tr><td><strong>' + esc(item.name) + '</strong></td><td><button class="table-link" onclick="promptClassStudents(\'' + item.id + '\')">' + count + ' 名学生</button></td><td><div class="class-teacher-cell"><span>' + esc(classTeacherSummary(item)) + '</span><button class="btn btn-outline btn-sm" onclick="showClassTeacherEditor(\'' + item.id + '\')">编辑</button></div></td><td><button class="btn btn-danger btn-sm" onclick="removeManagedClass(\'' + item.id + '\')">删除</button></td></tr>';
     }).join('');
     UI.modal('班级管理',
-      '<div class="schedule-notice muted">' + ICON.info + '<div><strong>班级是工作台的核心</strong><span>这里的班级同时用于学生、成绩、作业、沟通和课表，不需要在其他页面重复添加。</span></div></div>' +
-      '<div class="form-row"><div class="form-group"><label class="form-label">年级</label><select class="form-select" id="managed-grade">' +
+      '<div class="schedule-notice muted">' + ICON.info + '<div><strong>班级是工作台的核心</strong><span>在这里统一维护学生、班主任、科任教师与联系方式。</span></div></div>' +
+      '<div class="class-create-row"><div class="form-group"><label class="form-label">年级</label><select class="form-select" id="managed-grade">' +
       GRADE_LABELS.map(item => '<option value="' + item + '">' + item + '</option>').join('') +
       '</select></div><div class="form-group"><label class="form-label">班号</label><select class="form-select" id="managed-number">' +
       Array.from({length:20},(_,index)=>'<option value="' + (index+1) + '">' + (index+1) + ' 班</option>').join('') +
-      '</select></div></div><button class="btn btn-primary mb-4" onclick="createManagedClass()">' + ICON.plus + ' 添加任课班级</button>' +
-      (rows ? '<div class="table-wrap"><table class="data-table"><thead><tr><th>班级</th><th>学生</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : UI.empty(ICON.users,'尚未添加任课班级')),
-      '<button class="btn btn-primary" onclick="UI.closeModal()">完成</button>');
+      '</select></div><button class="btn btn-primary" onclick="createManagedClass()">' + ICON.plus + ' 添加任课班级</button></div>' +
+      (rows ? '<div class="table-wrap"><table class="data-table"><thead><tr><th>班级</th><th>学生</th><th>教师</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : UI.empty(ICON.users,'尚未添加任课班级')),
+      '<button class="btn btn-outline" onclick="importTeacherConfiguration()">' + ICON.upload + ' 导入教师配置</button><button class="btn btn-ghost" onclick="downloadTeacherConfigurationTemplate()">下载模板</button><button class="btn btn-primary" onclick="UI.closeModal()">完成</button>');
+    document.querySelector('#modal-overlay .modal').classList.add('class-manager-modal');
+  };
+
+  window.promptClassStudents = function (classId) {
+    const item = Store.data.classes.find(row => row.id === classId);
+    if (!item) return;
+    UI.confirm('前往学生管理编辑“' + esc(item.name) + '”的学生信息？', () => {
+      Store.setCurrentClass(classId); UI.closeModal(); renderTopbar(); App.navigate('students');
+    });
+  };
+
+  function teacherOptions(term, selected) {
+    return '<option value="">未配置</option>' + term.teachers.map(item => '<option value="' + item.id + '" ' + (item.id === selected ? 'selected' : '') + '>' + esc(item.name) + (item.contact ? ' · ' + esc(item.contact) : '') + '</option>').join('');
+  }
+
+  window.showClassTeacherEditor = function (classId) {
+    const top = Store.data.classes.find(item => item.id === classId);
+    const {term,scheduleClass} = activeClassConfig(classId);
+    if (!top || !scheduleClass) return;
+    const teacherRows = term.teachers.map(item => '<tr><td><strong>' + esc(item.name) + '</strong>' + (item.id === term.selfTeacherId ? ' <span class="status-pill success">本人</span>' : '') + '</td><td>' + esc(item.contact || '未填写') + '</td><td><button class="btn btn-outline btn-sm" onclick="editManagedTeacher(\'' + classId + '\',\'' + item.id + '\')">编辑</button></td></tr>').join('');
+    const mappings = term.subjects.map(subject => '<label><span>' + esc(subject.name) + '</span><select class="form-select" onchange="saveManagedSubjectTeacher(\'' + classId + '\',\'' + subject.id + '\',this.value)">' + teacherOptions(term,(scheduleClass.subjectTeachers || {})[subject.id]) + '</select></label>').join('');
+    UI.modal(esc(top.name) + ' · 教师配置',
+      '<div class="teacher-editor-toolbar"><button class="btn btn-primary btn-sm" onclick="editManagedTeacher(\'' + classId + '\',\'\')">' + ICON.plus + ' 添加教师</button><button class="btn btn-outline btn-sm" onclick="importTeacherConfiguration()">' + ICON.upload + ' 导入表格</button><button class="btn btn-ghost btn-sm" onclick="downloadTeacherConfigurationTemplate()">下载模板</button></div>' +
+      '<div class="table-wrap mb-4"><table class="data-table"><thead><tr><th>教师</th><th>联系方式（可选）</th><th></th></tr></thead><tbody>' + teacherRows + '</tbody></table></div>' +
+      '<div class="form-group"><label class="form-label">班主任</label><select class="form-select" id="managed-homeroom" onchange="saveManagedHomeroom(\'' + classId + '\',this.value)">' + teacherOptions(term,scheduleClass.homeroomTeacherId) + '</select><p class="form-hint">本人也可以兼任班主任。</p></div>' +
+      '<div class="management-title">各科科任教师</div><div class="teacher-mapping-grid">' + mappings + '</div>',
+      '<button class="btn btn-ghost" onclick="showClassManager()">返回班级管理</button><button class="btn btn-primary" onclick="UI.closeModal()">完成</button>');
+    document.querySelector('#modal-overlay .modal').classList.add('class-teacher-modal');
+  };
+
+  window.editManagedTeacher = function (classId, teacherId) {
+    const {term} = activeClassConfig(classId), teacher = term.teachers.find(item => item.id === teacherId) || {};
+    UI.modal(teacherId ? '编辑教师' : '添加教师', '<div class="form-group"><label class="form-label">教师姓名</label><input class="form-input" id="managed-teacher-name" value="' + esc(teacher.name || '') + '" placeholder="如：吴老师"></div><div class="form-group"><label class="form-label">联系方式（可选）</label><input class="form-input" id="managed-teacher-contact" value="' + esc(teacher.contact || '') + '" placeholder="手机号、邮箱或办公电话"></div>', '<button class="btn btn-ghost" onclick="showClassTeacherEditor(\'' + classId + '\')">取消</button><button class="btn btn-primary" onclick="saveManagedTeacher(\'' + classId + '\',\'' + teacherId + '\')">保存</button>');
+  };
+
+  window.saveManagedTeacher = function (classId, teacherId) {
+    const {term} = activeClassConfig(classId), name = document.getElementById('managed-teacher-name').value.trim(), contact = document.getElementById('managed-teacher-contact').value.trim();
+    if (!name) return UI.toast('请输入教师姓名','warning');
+    let teacher = term.teachers.find(item => item.id === teacherId);
+    if (!teacher) { teacher = {id:ScheduleCore.uid('teacher'),name,contact}; term.teachers.push(teacher); }
+    else Object.assign(teacher,{name,contact});
+    scheduleSave('教师信息已保存'); showClassTeacherEditor(classId);
+  };
+
+  window.saveManagedHomeroom = function (classId, teacherId) {
+    const top = Store.data.classes.find(item => item.id === classId), config = activeClassConfig(classId), teacher = config.term.teachers.find(item => item.id === teacherId);
+    config.scheduleClass.homeroomTeacherId = teacherId;
+    config.scheduleClass.homeroomTeacherName = teacher ? teacher.name : '';
+    top.homeroomTeacherName = config.scheduleClass.homeroomTeacherName;
+    scheduleSave('班主任已保存');
+  };
+
+  window.saveManagedSubjectTeacher = function (classId, subjectId, teacherId) {
+    const {scheduleClass} = activeClassConfig(classId);
+    scheduleClass.subjectTeachers[subjectId] = teacherId; scheduleSave();
+  };
+
+  function configValue(row, keys) { for (const key of keys) if (row[key] != null && String(row[key]).trim()) return String(row[key]).trim(); return ''; }
+  function ensureTeacher(term, name, contact) {
+    let teacher = term.teachers.find(item => normalize(item.name) === normalize(name));
+    if (!teacher) { teacher = {id:ScheduleCore.uid('teacher'),name,contact:contact || ''}; term.teachers.push(teacher); }
+    else if (contact) teacher.contact = contact;
+    return teacher;
+  }
+
+  window.importTeacherConfiguration = function () {
+    importFromFile('', rows => {
+      const term = scheduleTerm(); let count = 0;
+      rows.forEach(row => {
+        const classNameValue=configValue(row,['班级','class']), subjectName=configValue(row,['科目','subject']), teacherName=configValue(row,['教师','任课教师','teacher']), homeroomName=configValue(row,['班主任','homeroom']), contact=configValue(row,['联系方式','电话','邮箱','contact']);
+        const top=Store.data.classes.find(item=>normalize(item.name)===normalize(classNameValue));
+        if(!top)return;
+        const scheduleClass=term.classes.find(item=>(item.linkedClassId||item.id)===top.id); if(!scheduleClass)return;
+        if(homeroomName){const homeroom=ensureTeacher(term,homeroomName,contact);scheduleClass.homeroomTeacherId=homeroom.id;scheduleClass.homeroomTeacherName=homeroom.name;top.homeroomTeacherName=homeroom.name;count++;}
+        if(subjectName&&teacherName){const subject=term.subjects.find(item=>normalize(item.name)===normalize(subjectName));if(subject){const teacher=ensureTeacher(term,teacherName,contact);scheduleClass.subjectTeachers[subject.id]=teacher.id;count++;}}
+      });
+      scheduleSave(); UI.closeModal(); showClassManager(); return count;
+    });
+  };
+
+  window.downloadTeacherConfigurationTemplate = function () {
+    const csv='班级,班主任,科目,教师,联系方式\n五年级（1）班,吴老师,英语,吴老师,13800000000\n五年级（1）班,,数学,李老师,teacher@example.com';
+    const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='教师配置模板.csv';a.click();URL.revokeObjectURL(url);
   };
 
   window.createManagedClass = function () {
@@ -215,10 +319,10 @@
     tb.innerHTML =
       '<button class="hamburger" onclick="toggleSidebar()">' + ICON.menu + '</button>' +
       '<div class="class-selector" onclick="showClassDropdown(event)">' + ICON.users + '<span class="class-name">' + esc(cls ? cls.name : '尚未添加班级') + '</span>' + ICON.chevronDown + '</div>' +
-      '<div class="dropdown-menu" id="class-dropdown">' +
-      Store.data.classes.map(item => '<div class="dropdown-item" onclick="switchClass(\'' + item.id + '\')">' + ICON.users + '<span>' + esc(item.name) + '</span>' + (item.id===Store.data.currentClassId?ICON.check:'') + '</div>').join('') +
-      (!Store.data.classes.length ? '<div class="dropdown-item muted">暂无任课班级</div>' : '') + '</div>' +
-      '<button class="btn btn-outline btn-sm class-manage-button" onclick="showClassManager()">' + ICON.plus + ' 班级管理</button>' +
+      '<div class="dropdown-menu class-dropdown-panel" id="class-dropdown"><div class="class-dropdown-head"><strong>切换班级</strong><button class="btn btn-outline btn-sm" onclick="showClassManager()">' + ICON.plus + ' 班级管理</button></div><div class="class-option-grid">' +
+      Store.data.classes.map(item => '<button type="button" class="class-option ' + (item.id===Store.data.currentClassId?'active':'') + '" onclick="switchClass(\'' + item.id + '\')">' + ICON.users + '<span>' + esc(item.name) + '</span>' + (item.id===Store.data.currentClassId?ICON.check:'') + '</button>').join('') +
+      (!Store.data.classes.length ? '<div class="dropdown-item muted">暂无任课班级</div>' : '') + '</div></div>' +
+      '' +
       '<div class="topbar-spacer"></div><div class="topbar-datetime"><div class="topbar-date">' + dateStr + '</div><div class="topbar-time" id="topbar-time">' + now.toTimeString().slice(0,8) + '</div></div>' +
       '<button class="appearance-trigger" type="button" onclick="toggleAppearancePanel(event)" title="外观与语言" aria-label="外观与语言">' + ICON.palette + '</button>' +
       '<div class="topbar-user-wrap" onclick="showUserDropdown(event)"><div class="topbar-user" title="' + esc(displayName) + '">' + esc(Array.from(displayName)[0] || '师') + '</div>' +
@@ -232,7 +336,7 @@
 
   window.renderSidebar = function () {
     const sb = document.getElementById('sidebar'), school = schoolData().schoolName;
-    let html = '<div class="sidebar-header"><div class="sidebar-logo">' + ICON.lesson + '</div><div><div class="sidebar-title">超能工作台</div><div class="sidebar-subtitle">' + esc(school || '学校未设置') + '</div></div></div><nav class="sidebar-nav">';
+    let html = '<div class="sidebar-header"><div class="sidebar-logo"><img src="favicon.svg" alt=""></div><div><div class="sidebar-title">超能工作台</div><div class="sidebar-subtitle">' + esc(school || '学校未设置') + '</div></div></div><nav class="sidebar-nav">';
     NAV.forEach(section => {
       html += '<div class="nav-section-label">' + section.section + '</div>';
       section.items.forEach(item => { html += '<div class="nav-item ' + (App.currentModule===item.id?'active':'') + '" data-module="' + item.id + '">' + ICON[item.icon] + '<span>' + item.label + '</span></div>'; });

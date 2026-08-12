@@ -217,12 +217,12 @@ svg {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  background: var(--primary-bg);
   padding: 7px 14px;
   border-radius: var(--radius);
   cursor: pointer;
   transition: all 0.2s;
-  border: 1px solid #a7f3d0;
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
 }
 
 .class-selector:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
@@ -424,7 +424,7 @@ svg {
 .btn-outline {
   background: #fff;
   color: var(--primary-dark);
-  border: 1px solid #a7f3d0;
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
 }
 
 .btn-outline:hover { background: var(--primary-bg); }

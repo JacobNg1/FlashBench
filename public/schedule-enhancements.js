@@ -217,6 +217,11 @@ window.renderMySchedule = function (term) {
   return `${html}${renderAdjustmentLog(term)}`;
 };
 
+function scheduleTeacherDetail(term, teacherId) {
+  const teacher = (term.teachers || []).find(item => item.id === teacherId);
+  return teacher ? teacher.name + (teacher.contact ? ' · ' + teacher.contact : '') : '未配置教师';
+}
+
 function openCourseAdjustment(itemId) {
   const item = (ScheduleUI.currentMineItems || []).find(row => row.id === itemId);
   if (!item) return UI.toast('未找到该课程，请刷新后重试', 'warning');
@@ -224,14 +229,14 @@ function openCourseAdjustment(itemId) {
   const term = scheduleTerm();
   const slots = term.slots.filter(slot => slot.enabled !== false), currentIndex = slots.findIndex(slot => slot.id === item.slotId), nextSlot = slots[currentIndex + 1] || slots[currentIndex] || {};
   const preset = { action:'move', scope:'temporary', sourceDate:item.date, targetDate:item.date, sourceDay:item.day, targetDay:item.day, sourceClassId:item.classId, targetClassId:item.classId, sourceSlotId:item.slotId, targetSlotId:nextSlot.id, subjectId:item.subjectId, teacherId:item.teacherId };
-  UI.modal(`调课 · ${scheduleSubjectName(term,item.subjectId)} · ${scheduleClassName(term,item.classId)}`, `${adjustmentSelects(term,preset)}<div class="schedule-notice muted">${ICON.info}<div><strong>当前课程</strong><span>${item.date} ${item.day} · ${scheduleSlotLabel(term,item.slotId)}</span></div></div>`, `<button class="btn btn-ghost" onclick="UI.closeModal()">取消</button><button class="btn btn-primary" onclick="saveScheduleAdjustment('')">保存调课</button>`);
+  UI.modal(`调课 · ${scheduleSubjectName(term,item.subjectId)} · ${scheduleClassName(term,item.classId)}`, `${adjustmentSelects(term,preset)}<div class="schedule-notice muted">${ICON.info}<div><strong>当前课程</strong><span>${item.date} ${item.day} · ${scheduleSlotLabel(term,item.slotId)} · ${esc(scheduleTeacherDetail(term,item.teacherId))}</span></div></div>`, `<button class="btn btn-ghost" onclick="UI.closeModal()">取消</button><button class="btn btn-primary" onclick="saveScheduleAdjustment('')">保存调课</button>`);
 }
 
 function viewAdjustmentLog(id) {
   const term = scheduleTerm(), item = (term.adjustments || []).find(row => row.id === id);
   if (!item) return;
   const actionNames = {swap:'互换',move:'移课',cancel:'停课',extra:'补课'};
-  UI.modal('调课日志详情', `<dl class="schedule-meta"><div><dt>状态</dt><dd>${item.cancelledAt ? '已取消' : '生效中'}</dd></div><div><dt>类型</dt><dd>${actionNames[item.action] || ''}</dd></div><div><dt>范围</dt><dd>${item.scope === 'temporary' ? '临时调课' : '长期调课'}</dd></div></dl><div class="adjustment-detail"><p><strong>原课程：</strong>${item.action === 'extra' ? '无' : `${esc(scheduleClassName(term,item.sourceClassId))} · ${esc(item.sourceDay)} · ${esc(scheduleSlotLabel(term,item.sourceSlotId))}`}</p><p><strong>目标安排：</strong>${item.action === 'cancel' ? '停课' : `${esc(scheduleClassName(term,item.targetClassId))} · ${esc(item.targetDay)} · ${esc(scheduleSlotLabel(term,item.targetSlotId))}`}</p><p><strong>原因：</strong>${esc(item.reason || '未填写')}</p>${item.cancelledAt ? `<p><strong>取消时间：</strong>${esc(item.cancelledAt.replace('T',' ').slice(0,16))}</p>` : ''}</div>`, item.cancelledAt ? '<button class="btn btn-primary" onclick="UI.closeModal()">关闭</button>' : `<button class="btn btn-ghost" onclick="UI.closeModal()">关闭</button><button class="btn btn-danger" onclick="cancelAdjustmentLog('${item.id}')">取消调课</button>`);
+  UI.modal('调课日志详情', `<dl class="schedule-meta"><div><dt>状态</dt><dd>${item.cancelledAt ? '已取消' : '生效中'}</dd></div><div><dt>类型</dt><dd>${actionNames[item.action] || ''}</dd></div><div><dt>范围</dt><dd>${item.scope === 'temporary' ? '临时调课' : '长期调课'}</dd></div></dl><div class="adjustment-detail"><p><strong>原课程：</strong>${item.action === 'extra' ? '无' : `${esc(scheduleClassName(term,item.sourceClassId))} · ${esc(item.sourceDay)} · ${esc(scheduleSlotLabel(term,item.sourceSlotId))}`}</p><p><strong>目标安排：</strong>${item.action === 'cancel' ? '停课' : `${esc(scheduleClassName(term,item.targetClassId))} · ${esc(item.targetDay)} · ${esc(scheduleSlotLabel(term,item.targetSlotId))}`}</p><p><strong>教师：</strong>${esc(scheduleTeacherDetail(term,item.teacherId))}</p><p><strong>原因：</strong>${esc(item.reason || '未填写')}</p>${item.cancelledAt ? `<p><strong>取消时间：</strong>${esc(item.cancelledAt.replace('T',' ').slice(0,16))}</p>` : ''}</div>`, item.cancelledAt ? '<button class="btn btn-primary" onclick="UI.closeModal()">关闭</button>' : `<button class="btn btn-ghost" onclick="UI.closeModal()">关闭</button><button class="btn btn-danger" onclick="cancelAdjustmentLog('${item.id}')">取消调课</button>`);
 }
 
 function cancelAdjustmentLog(id) {
