@@ -3,9 +3,10 @@
     'zh-CN': {
       'app.name': '超能工作台', 'app.powered': 'Powered by Gene',
       'auth.login': '登录', 'auth.register': '注册', 'auth.username': '用户名', 'auth.password': '密码',
-      'appearance.title': '外观与语言', 'appearance.theme': '主题', 'appearance.mode': '明暗模式',
+      'appearance.title': '外观与语言', 'appearance.theme': '主题', 'appearance.style': '主题风格', 'appearance.palette': '主题配色', 'appearance.mode': '明暗模式',
       'appearance.system': '跟随系统', 'appearance.light': '浅色', 'appearance.dark': '深色',
-      'appearance.random': '随机配色', 'appearance.language': '语言',
+      'appearance.random': '随机配色', 'appearance.randomHint': '每次打开自动换色', 'appearance.language': '语言', 'appearance.close': '关闭',
+      'theme.glass': '毛玻璃动态', 'theme.solid': '纯色简约',
       'theme.aurora': '极光蓝紫', 'theme.ocean': '深海青蓝', 'theme.obsidian': '曜石鎏金',
       'theme.peach': '桃汽粉', 'theme.mint': '薄荷奶油', 'theme.lavender': '薰衣草糖果',
       'theme.indigo': '靛蓝', 'theme.emerald': '翡翠', 'theme.graphite': '石墨'
@@ -13,9 +14,10 @@
     'en-US': {
       'app.name': 'Power Workspace', 'app.powered': 'Powered by Gene',
       'auth.login': 'Sign in', 'auth.register': 'Register', 'auth.username': 'Username', 'auth.password': 'Password',
-      'appearance.title': 'Appearance & language', 'appearance.theme': 'Theme', 'appearance.mode': 'Color mode',
+      'appearance.title': 'Appearance & language', 'appearance.theme': 'Theme', 'appearance.style': 'Visual style', 'appearance.palette': 'Color palette', 'appearance.mode': 'Color mode',
       'appearance.system': 'System', 'appearance.light': 'Light', 'appearance.dark': 'Dark',
-      'appearance.random': 'Random theme', 'appearance.language': 'Language',
+      'appearance.random': 'Random colors', 'appearance.randomHint': 'Changes every time you open the app', 'appearance.language': 'Language', 'appearance.close': 'Close',
+      'theme.glass': 'Animated glass', 'theme.solid': 'Solid minimal',
       'theme.aurora': 'Aurora', 'theme.ocean': 'Deep ocean', 'theme.obsidian': 'Obsidian gold',
       'theme.peach': 'Peach soda', 'theme.mint': 'Mint cream', 'theme.lavender': 'Lavender candy',
       'theme.indigo': 'Indigo', 'theme.emerald': 'Emerald', 'theme.graphite': 'Graphite'
